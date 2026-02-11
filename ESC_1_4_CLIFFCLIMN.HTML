@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>时间攀登者 - 乱石阵挑战版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            margin: 0;
+            overflow: hidden;
+            background-color: #0f172a;
+        }
+
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(to bottom, #1e293b, #0f172a);
+        }
+
+        /* 黑色险峻悬崖 */
+        .cliff {
+            position: absolute;
+            right: 0;
+            top: 0;
+            width: 150px; /* 稍微窄一点，腾出更多空间 */
+            height: 100%;
+            background: #111;
+            box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+        .cliff::after {
+            content: '';
+            position: absolute;
+            left: -20px;
+            top: 0;
+            width: 40px;
+            height: 100%;
+            background: inherit;
+            clip-path: polygon(100% 0, 100% 100%, 0 95%, 40% 85%, 0 75%, 50% 65%, 0 50%, 60% 35%, 0 20%, 50% 10%);
+        }
+
+        /* 角色 - 变小并挪到最右侧边缘 */
+        #climber {
+            position: absolute;
+            right: 15px; /* 紧贴悬崖右侧边缘 */
+            bottom: 80px;
+            font-size: 2.5rem; /* 缩小尺寸，不再碍事 */
+            z-index: 10;
+            transition: bottom 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+            filter: drop-shadow(0 2px 5px rgba(0,0,0,0.5));
+            user-select: none;
+        }
+
+        /* 陨石样式 */
+        .rock {
+            position: absolute;
+            padding: 15px 25px;
+            background: radial-gradient(circle at 30% 30%, #4b5563, #1f2937);
+            color: white;
+            border-radius: 50% 40% 60% 45%;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(0,0,0,0.5);
+            border: 2px solid #374151;
+            z-index: 5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-width: 100px;
+            font-size: 1.2rem;
+            transition: transform 0.1s;
+        }
+        .rock:active { transform: scale(0.9); }
+
+        /* 左侧面板 (HUD) */
+        #side-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(15, 23, 42, 0.85);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            z-index: 50;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 海洋 */
+        .ocean {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 80px;
+            background: #075985;
+            z-index: 20;
+        }
+        .wave {
+            position: absolute;
+            top: -20px;
+            width: 200%;
+            height: 40px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23075985" d="M0,160L48,176C96,192,192,224,288,213.3C384,203,480,149,576,149.3C672,149,768,203,864,202.7C960,203,1056,149,1152,128C1248,107,1344,117,1392,122.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path></svg>');
+            background-size: 50% 100%;
+            animation: wave-move 10s linear infinite;
+        }
+
+        #overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-align: center;
+        }
+
+        @keyframes wave-move { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        .shake-ui { animation: shake 0.5s; }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <!-- 左侧任务面板 -->
+    <div id="side-panel">
+        <div class="mb-4">
+            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">攀爬进度</div>
+            <div class="text-2xl font-bold text-yellow-400"><span id="height-val">0</span> / 200m</div>
+            <div class="w-full h-2 bg-gray-700 rounded-full mt-2 overflow-hidden border border-gray-600">
+                <div id="progress-bar" class="h-full bg-yellow-400 transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+        
+        <div id="question-box" class="pt-4 border-t border-gray-700">
+            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">当前目标任务</div>
+            <div id="q-text" class="text-xl font-bold text-white mb-1">加载中...</div>
+            <div id="q-pinyin" class="text-sm text-sky-300 italic"></div>
+        </div>
+    </div>
+
+    <!-- 场景 -->
+    <div class="cliff"></div>
+    <div id="climber">🧗</div>
+    <div id="rock-container"></div>
+
+    <!-- 大海 -->
+    <div class="ocean">
+        <div class="wave"></div>
+    </div>
+</div>
+
+<div id="overlay">
+    <h2 id="overlay-title" class="text-6xl font-bold mb-6"></h2>
+    <p id="overlay-msg" class="text-2xl mb-10 whitespace-pre-line"></p>
+    <button onclick="resetGame()" class="bg-yellow-500 hover:bg-yellow-600 text-black px-12 py-4 rounded-full text-2xl font-bold transform transition hover:scale-110 active:scale-95">
+        重新开始
+    </button>
+</div>
+
+<script>
+    const vocabPool = [
+        { q: "o'clock", p: "diǎn", a: "点" },
+        { q: "minute", p: "fēn", a: "分" },
+        { q: "zero", p: "líng", a: "零" },
+        { q: "quarter", p: "kè", a: "刻" },
+        { q: "half", p: "bàn", a: "半" },
+        { q: "two (measure words)", p: "liǎng", a: "两" },
+        { q: "Morning (Early)", p: "zǎo shang", a: "早上" },
+        { q: "Morning (Late)", p: "shàng wǔ", a: "上午" },
+        { q: "Noon", p: "zhōng wǔ", a: "中午" },
+        { q: "Afternoon", p: "xià wǔ", a: "下午" },
+        { q: "Evening/Night", p: "wǎn shang", a: "晚上" },
+        { q: "Fall short of", p: "chà", a: "差" },
+        { q: "What time is it?", p: "Xiànzài jǐ diǎn le?", a: "现在几点了？" },
+        { q: "It's 9:15", p: "Xiànzài jiǔ diǎn yí kè", a: "现在九点一刻" },
+        { q: "It's 11:30", p: "Xiànzài shí yī diǎn bàn", a: "现在十一点半" },
+        { q: "It's 8:05", p: "Xiànzài bā diǎn líng wǔ fēn", a: "现在八点零五分" },
+        { q: "11:00 PM", p: "wǎnshang shíyī diǎn", a: "晚上十一点" },
+        { q: "6:50 PM", p: "wǎnshang liù diǎn wǔ shí fēn", a: "晚上六点五十分" },
+        { q: "7:50 AM", p: "zǎoshang chà shí fēn bā diǎn", a: "早上差十分八点" }
+    ];
+
+    let height = 0;
+    const WIN_HEIGHT = 200;
+    const STEP = 25;
+    const FALL_STEP = 35;
+    let gameActive = true;
+    let activeRocks = [];
+    let currentCorrectAnswer = "";
+
+    const climber = document.getElementById('climber');
+    const heightVal = document.getElementById('height-val');
+    const progressBar = document.getElementById('progress-bar');
+    const qText = document.getElementById('q-text');
+    const qPinyin = document.getElementById('q-pinyin');
+    const rockContainer = document.getElementById('rock-container');
+    const overlay = document.getElementById('overlay');
+    const sidePanel = document.getElementById('side-panel');
+
+    function initGame() {
+        height = 0;
+        updateUI();
+        gameActive = true;
+        nextQuestion();
+    }
+
+    function updateUI() {
+        heightVal.innerText = height;
+        const progress = (height / WIN_HEIGHT) * 100;
+        progressBar.style.width = `${progress}%`;
+        
+        const minY = 80;
+        const maxY = window.innerHeight - 150;
+        const currentY = minY + ( (height / WIN_HEIGHT) * (maxY - minY) );
+        climber.style.bottom = `${currentY}px`;
+    }
+
+    function nextQuestion() {
+        if (!gameActive) return;
+        
+        activeRocks.forEach(r => r.remove());
+        activeRocks = [];
+
+        const question = vocabPool[Math.floor(Math.random() * vocabPool.length)];
+        qText.innerText = question.q;
+        qPinyin.innerText = question.p;
+        currentCorrectAnswer = question.a;
+
+        // 生成 6 个选项
+        let options = [question.a];
+        while(options.length < 6) {
+            let randA = vocabPool[Math.floor(Math.random() * vocabPool.length)].a;
+            if(!options.includes(randA)) options.push(randA);
+        }
+        options = options.sort(() => Math.random() - 0.5);
+
+        options.forEach((opt, index) => {
+            setTimeout(() => {
+                if(!gameActive) return;
+                createRock(opt, opt === currentCorrectAnswer);
+            }, index * 1200); 
+        });
+    }
+
+    function createRock(text, isCorrect) {
+        const rock = document.createElement('div');
+        rock.className = 'rock';
+        rock.innerText = text;
+        
+        // 范围：避开左侧面板，且给右侧悬崖留出空间
+        const startX = Math.random() * (window.innerWidth - 500) + 320;
+        rock.style.left = `${startX}px`;
+        rock.style.top = `-100px`;
+        
+        rockContainer.appendChild(rock);
+        activeRocks.push(rock);
+
+        let posY = -100;
+        const speed = 1.2 + (height / 250); 
+        
+        const fallInterval = setInterval(() => {
+            if (!gameActive) {
+                clearInterval(fallInterval);
+                return;
+            }
+
+            posY += speed;
+            rock.style.top = `${posY}px`;
+
+            if (posY > window.innerHeight - 80) {
+                clearInterval(fallInterval);
+                rock.remove();
+                activeRocks = activeRocks.filter(r => r !== rock);
+                if (isCorrect) handleResult(false, true);
+            }
+        }, 16);
+
+        rock.onclick = (e) => {
+            e.stopPropagation();
+            clearInterval(fallInterval);
+            rock.remove();
+            activeRocks = activeRocks.filter(r => r !== rock);
+            handleResult(isCorrect, false);
+        };
+    }
+
+    function handleResult(isCorrect, isMissed) {
+        if (isCorrect) {
+            height += STEP;
+            climber.innerText = "🧗‍♂️";
+            if (height >= WIN_HEIGHT) {
+                height = WIN_HEIGHT;
+                updateUI();
+                setTimeout(() => endGame(true), 500);
+            } else {
+                updateUI();
+                nextQuestion();
+            }
+        } else {
+            height -= FALL_STEP;
+            if (height < 0) height = 0;
+            updateUI();
+            
+            climber.innerText = isMissed ? "😮" : "😫";
+            sidePanel.classList.add('shake-ui');
+            
+            setTimeout(() => {
+                sidePanel.classList.remove('shake-ui');
+                climber.innerText = "🧗";
+                nextQuestion();
+            }, 600);
+        }
+    }
+
+    function endGame(isWin) {
+        gameActive = false;
+        overlay.style.display = 'flex';
+        const title = document.getElementById('overlay-title');
+        const msg = document.getElementById('overlay-msg');
+        
+        if (isWin) {
+            title.innerText = "🚩 登顶成功！";
+            msg.innerText = "你是最棒的攀爬者！\n时间词汇已经难不倒你了。";
+            climber.innerText = "🏆";
+        } else {
+            title.innerText = "🌊 坠入深海";
+            msg.innerText = "别灰心！乱石阵确实有挑战。\n再试一次，注意左上角的任务！";
+            climber.innerText = "🏊";
+        }
+    }
+
+    function resetGame() {
+        overlay.style.display = 'none';
+        rockContainer.innerHTML = '';
+        height = 0;
+        climber.innerText = "🧗";
+        updateUI();
+        gameActive = true;
+        nextQuestion();
+    }
+
+    window.onload = initGame;
+</script>
+
+</body>
+</html>
