@@ -3,834 +3,322 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词/字/句子）v1.1</title>
+  <title>ESC-1-2 时间单元｜大鱼吃小鱼 v1.6 终极版</title>
 
   <style>
     :root{
       --text:#f4f7ff;
       --muted:#c7d1ff;
-      --panel: rgba(255,255,255,.12);
-      --border: rgba(255,255,255,.20);
-      --shadow: 0 20px 70px rgba(0,0,0,.60);
+      --panel: rgba(15, 23, 42, 0.95);
+      --border: rgba(255,255,255,0.2);
       --accent:#ffd54a;
       --good:#63ffb0;
       --bad:#ff5f86;
     }
     *{box-sizing:border-box;}
-    html,body{height:100%;}
+    html,body{height:100%; margin:0; background: #020617; overflow: hidden;}
     body{
-      margin:0;
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif;
+      font-family: system-ui, -apple-system, sans-serif;
       color:var(--text);
-      overflow:hidden;
-      background:
-        radial-gradient(1200px 800px at 20% 10%, rgba(255,213,74,.10), transparent 60%),
-        radial-gradient(1200px 800px at 80% 20%, rgba(120,110,255,.18), transparent 60%),
-        linear-gradient(180deg, #031026 0%, #010513 35%, #00040a 100%);
       user-select:none;
-      -webkit-user-select:none;
-      touch-action: manipulation;
     }
 
-    /* HUD */
-    .hud{
-      position:fixed;
-      top:14px; left:14px; right:14px;
-      display:flex; gap:12px;
-      z-index:50;
-      pointer-events:none;
-    }
-    .card{
-      pointer-events:auto;
-      background:var(--panel);
-      border:1px solid var(--border);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      padding:12px 14px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-    }
-    .left{ flex:1 1 auto; min-width: 520px; }
-    .right{ flex:0 0 auto; min-width: 290px; }
-
-    .title{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      flex-wrap:wrap;
-    }
-    .title h1{
-      margin:0;
-      font-size:16px;
-      color:var(--muted);
-      font-weight:900;
-      letter-spacing:.2px;
+    #ocean-bg {
+      position: fixed; inset: 0;
+      background: radial-gradient(circle at 50% 0%, #1e293b, #020617);
+      z-index: 1;
     }
 
-    .modebar{
-      margin-top:10px;
-      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    /* HUD 面板 */
+    .hud {
+      position: fixed; top: 10px; left: 10px; right: 10px;
+      display: flex; gap: 12px; z-index: 100;
     }
-    .btn{
-      cursor:pointer;
-      border:none;
-      border-radius:12px;
-      padding:10px 12px;
-      background:rgba(255,255,255,.12);
-      color:var(--text);
-      border:1px solid rgba(255,255,255,.18);
-      font-weight:900;
-      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    .card {
+      background: var(--panel);
+      backdrop-filter: blur(15px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 15px 20px;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.6);
     }
-    .btn:hover{ background:rgba(255,255,255,.16); }
-    .btn:active{ transform: translateY(1px) scale(.99); }
-    .btn.on{
-      border-color: rgba(255,213,74,.70);
-      box-shadow: 0 0 0 5px rgba(255,213,74,.12);
+    .left { flex: 1; }
+    .right { width: 220px; text-align: right; }
+
+    .promptBig { font-size: 36px; font-weight: 900; color: var(--accent); letter-spacing: 1.5px; text-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+    .hint { font-size: 14px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+    
+    /* 句子进度条 */
+    .progress { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; min-height: 40px; }
+    .tok { padding: 5px 12px; border-radius: 10px; background: rgba(0,0,0,0.5); font-size: 20px; border: 1px solid var(--border); transition: all 0.3s; font-weight: bold; }
+    .tok.done { color: var(--good); border-color: var(--good); opacity: 0.4; }
+    .tok.now { border-color: var(--accent); color: var(--accent); box-shadow: 0 0 20px var(--accent); transform: scale(1.15); }
+
+    .modebar { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn {
+      background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+      color: white; padding: 7px 14px; border-radius: 10px; font-size: 14px;
+      cursor: pointer; font-weight: bold; transition: all 0.2s;
+    }
+    .btn:hover { background: rgba(255,255,255,0.15); }
+    .btn.on { background: var(--accent); color: #000; border-color: var(--accent); box-shadow: 0 0 15px rgba(255,213,74,0.4); }
+
+    /* 巨型大鱼 */
+    #bigFish {
+      position: absolute; 
+      width: 350px; height: 180px; /* 尺寸翻倍 */
+      left: 50%; top: 65%; transform: translate(-50%, -50%);
+      z-index: 50; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #bigFish .emoji { 
+      font-size: 160px; /* 超大 Emoji */
+      transform: scaleX(-1); 
+      filter: drop-shadow(0 20px 35px rgba(0,0,0,0.7)); 
     }
 
-    .prompt{ margin-top:10px; display:grid; gap:8px; }
-    .promptBig{
-      font-size:30px;
-      font-weight:1000;
-      color:var(--accent);
-      text-shadow: 0 10px 26px rgba(255,213,74,.28);
-      line-height:1.05;
-      word-break: break-word;
+    /* 迷你小鱼 */
+    .smallFish {
+      position: absolute; width: 80px; height: 50px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 20; transition: opacity 0.3s, transform 0.2s;
+      border: 1px solid rgba(255,255,255,0.25);
     }
-    .hint{ font-size:14px; color:var(--muted); line-height:1.35; }
+    .smallFish:hover { transform: scale(1.15); background: rgba(255, 255, 255, 0.25); }
+    
+    .smallFish::after {
+      content: ''; position: absolute; width: 18px; height: 25px;
+      background: inherit; top: 12px; z-index: -1;
+      border: inherit;
+    }
+    .facing-right::after { right: -12px; clip-path: polygon(0% 50%, 100% 0%, 100% 100%); }
+    .facing-left::after { left: -12px; clip-path: polygon(100% 50%, 0% 0%, 0% 100%); }
 
-    .progress{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center;
-      margin-top:4px;
-    }
-    .tok{
-      padding:7px 11px;
-      border-radius:999px;
-      border:1px solid rgba(255,255,255,.20);
-      background: rgba(0,0,0,.28);
-      color: rgba(255,255,255,.95);
-      font-weight:1000;
-      font-size:18px;
-    }
-    .tok.done{
-      border-color: rgba(99,255,176,.55);
-      background: rgba(99,255,176,.14);
-      color: rgba(99,255,176,.98);
-    }
-    .tok.now{
-      border-color: rgba(255,213,74,.85);
-      background: rgba(255,213,74,.18);
-      color: rgba(255,213,74,.98);
-      box-shadow: 0 0 0 5px rgba(255,213,74,.10);
-    }
+    .smallFish .char { font-size: 20px; font-weight: 900; color: white; text-shadow: 0 2px 5px black; pointer-events: none; }
 
-    .stats{
-      display:flex; flex-wrap:wrap; gap:10px; align-items:center;
-      color:var(--muted);
-      font-size:14px;
-      justify-content:flex-end;
-    }
-    .pill{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:8px 10px; border-radius:999px;
-      background:rgba(0,0,0,.28);
-      border:1px solid rgba(255,255,255,.14);
-    }
-    .pill b{ color:var(--text); font-weight:1000; }
+    .smallFish.good { background: rgba(99, 255, 176, 0.45); border-color: var(--good); }
+    .smallFish.bad { background: rgba(255, 95, 134, 0.45); border-color: var(--bad); }
 
-    /* Ocean scene */
-    #ocean{
-      position:fixed;
-      inset:0;
-      z-index:1;
-      overflow:hidden;
-    }
-    .water{
-      position:absolute; inset:0;
-      background:
-        radial-gradient(900px 650px at 15% 30%, rgba(0,200,255,.20), transparent 60%),
-        radial-gradient(900px 650px at 75% 25%, rgba(80,120,255,.18), transparent 60%),
-        linear-gradient(180deg, rgba(0,60,120,.55), rgba(0,10,25,.98));
-    }
-    .water:before{
-      content:"";
-      position:absolute; inset:0;
-      background: repeating-linear-gradient(
-        90deg,
-        rgba(255,255,255,.06) 0px,
-        rgba(255,255,255,.06) 12px,
-        rgba(0,0,0,0) 12px,
-        rgba(0,0,0,0) 34px
-      );
-      opacity:.30;
-      animation: drift 12s linear infinite;
-      pointer-events:none;
-    }
-    @keyframes drift{ 0%{transform:translateX(0)} 100%{transform:translateX(-240px)} }
-
-    /* corals */
-    .coral{
-      position:absolute;
-      bottom:-10px;
-      width:240px; height:220px;
-      opacity:.55;
-      pointer-events:none;
-      filter: blur(.1px);
-    }
-    .coral:before{
-      content:"";
-      position:absolute; inset:0;
-      background:
-        radial-gradient(60px 90px at 30% 70%, rgba(255,120,180,.55), transparent 70%),
-        radial-gradient(70px 110px at 55% 80%, rgba(255,180,90,.40), transparent 70%),
-        radial-gradient(80px 120px at 75% 75%, rgba(140,255,210,.35), transparent 72%),
-        radial-gradient(90px 140px at 35% 35%, rgba(130,110,255,.30), transparent 72%);
-      border-radius: 40% 60% 45% 55% / 55% 45% 55% 45%;
-    }
-    .c1{ left:1vw; transform: rotate(-6deg) scale(1.0); }
-    .c2{ left:18vw; transform: rotate(4deg) scale(.85); opacity:.42; }
-    .c3{ right:18vw; transform: rotate(-2deg) scale(.92); opacity:.46; }
-    .c4{ right:2vw; transform: rotate(6deg) scale(1.05); }
-
-    /* bubbles */
-    .bubble{
-      position:absolute;
-      bottom:-40px;
-      width:14px; height:14px;
-      border-radius:50%;
-      border:1px solid rgba(255,255,255,.28);
-      background: rgba(255,255,255,.05);
-      box-shadow: 0 10px 20px rgba(0,0,0,.25);
-      animation: rise 8s linear infinite;
-      pointer-events:none;
-      opacity:.0;
-    }
-    @keyframes rise{
-      0%{ transform: translateY(0) translateX(0) scale(.9); opacity:0; }
-      10%{ opacity:.55; }
-      100%{ transform: translateY(-110vh) translateX(40px) scale(1.25); opacity:0; }
-    }
-
-    /* Big fish */
-    #bigFish{
-      position:absolute;
-      left: 60vw;
-      top: 62vh;
-      width: 140px;
-      height: 78px;
-      border-radius: 26px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:10px;
-      background: rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.18);
-      box-shadow: 0 22px 70px rgba(0,0,0,.55);
-      z-index:10;
-      transition: left .26s ease, top .26s ease, transform .26s ease;
-      pointer-events:none;
-    }
-    #bigFish .emoji{
-      font-size:44px;
-      line-height:1;
-      transform: scaleX(-1);
-      filter: drop-shadow(0 10px 15px rgba(0,0,0,.45));
-    }
-    #bigFish.happy{ animation: pop 360ms ease-out; }
-    @keyframes pop{
-      0%{ transform: scale(1); }
-      40%{ transform: scale(1.08) rotate(-1deg); }
-      100%{ transform: scale(1); }
-    }
-    #bigFish.spit{ animation: spit 420ms ease-in-out; }
-    @keyframes spit{
-      0%{ transform: translateX(0) rotate(0deg); }
-      30%{ transform: translateX(-12px) rotate(-2deg); }
-      70%{ transform: translateX(12px) rotate(2deg); }
-      100%{ transform: translateX(0) rotate(0deg); }
-    }
-
-    /* Small fish */
-    .smallFish{
-      position:absolute;
-      width: 96px;
-      height: 58px;
-      border-radius: 18px;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      background: rgba(255,255,255,.16);
-      border:1px solid rgba(255,255,255,.22);
-      box-shadow: 0 16px 40px rgba(0,0,0,.45);
-      cursor:pointer;
-      z-index:9;
-      transition: transform .12s ease, opacity .2s ease;
-      will-change: transform, left, top;
-    }
-    .smallFish:hover{ transform: scale(1.04); }
-    .smallFish:active{ transform: scale(.99); }
-    .smallFish .char{
-      font-weight:1000;
-      font-size:28px;
-      color:#fff;
-      text-shadow: 0 10px 18px rgba(0,0,0,.55);
-      letter-spacing:.5px;
-    }
-    .smallFish .tail{
-      position:absolute;
-      right:-10px;
-      width:0; height:0;
-      border-top: 10px solid transparent;
-      border-bottom: 10px solid transparent;
-      border-left: 14px solid rgba(255,255,255,.22);
-      filter: drop-shadow(0 8px 10px rgba(0,0,0,.35));
-    }
-    .smallFish .eye{
-      position:absolute;
-      left:12px; top:24px;
-      width:6px; height:6px;
-      border-radius:50%;
-      background: rgba(0,0,0,.70);
-      box-shadow: 0 0 0 3px rgba(255,255,255,.10);
-    }
-    .smallFish.good{
-      border-color: rgba(99,255,176,.75);
-      box-shadow: 0 0 0 6px rgba(99,255,176,.12), 0 16px 40px rgba(0,0,0,.45);
-    }
-    .smallFish.bad{
-      border-color: rgba(255,95,134,.85);
-      box-shadow: 0 0 0 6px rgba(255,95,134,.14), 0 16px 40px rgba(0,0,0,.45);
-      animation: wiggle .28s ease-in-out 2;
-    }
-    @keyframes wiggle{
-      0%{ transform: rotate(0deg); }
-      30%{ transform: rotate(-5deg); }
-      60%{ transform: rotate(5deg); }
-      100%{ transform: rotate(0deg); }
-    }
-
-    /* Overlay */
-    .overlay{
-      position:fixed; inset:0;
-      display:none;
-      align-items:center; justify-content:center;
-      z-index:80;
-      background: rgba(0,0,0,.40);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-    .modal{
-      width:min(900px, 92vw);
-      padding:18px 18px 16px;
-      border-radius:22px;
-      background: rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.18);
-      box-shadow: var(--shadow);
-    }
-    .modal h2{ margin:0 0 8px; font-size:20px; }
-    .modal p{ margin:8px 0; color:var(--muted); line-height:1.45; }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-    .kbd{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size:12px;
-      padding:4px 8px;
-      border-radius:10px;
-      background: rgba(0,0,0,.28);
-      border:1px solid rgba(255,255,255,.14);
-      color:var(--text);
-    }
-
-    @media (max-width: 900px){
-      .left{ min-width: 360px; }
-      .promptBig{ font-size:26px; }
-      .right{ min-width: 250px; }
-    }
-    @media (max-width: 680px){
-      .hud{ flex-direction:column; }
-      .left, .right{ min-width: unset; }
-      #bigFish{ left: 55vw; top: 68vh; }
-    }
+    .overlay { position: fixed; inset: 0; display: none; z-index: 200; background: rgba(0,0,0,0.92); align-items: center; justify-content: center; flex-direction: column; }
   </style>
 </head>
-
 <body>
-  <div id="ocean">
-    <div class="water"></div>
-    <div class="coral c1"></div>
-    <div class="coral c2"></div>
-    <div class="coral c3"></div>
-    <div class="coral c4"></div>
-    <div id="bigFish"><span class="emoji">🐟</span></div>
-  </div>
 
-  <div class="hud">
-    <div class="card left">
-      <div class="title">
-        <h1>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词 / 字 / 句子）v1.1</h1>
-      </div>
+<div id="ocean-bg">
+  <div id="bigFish"><span class="emoji">🐟</span></div>
+  <div id="fish-container" style="position: absolute; inset: 0;"></div>
+</div>
 
+<div class="hud">
+  <div class="card left">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+      <h1 style="font-size: 13px; margin: 0; opacity: 0.6; font-weight: 800;">ESC-1-2 时间单元终极挑战 v1.6</h1>
       <div class="modebar">
-        <button class="btn on" id="btnModeWord">词语</button>
-        <button class="btn" id="btnModeChar">单字</button>
-        <button class="btn" id="btnModeSentence">句子顺序</button>
-        <span style="color:var(--muted);font-size:13px;">点小鱼=吃；答对加分；答错扣生命；不计时</span>
-      </div>
-
-      <div class="prompt">
-        <div class="promptBig" id="promptBig">zǎoshang</div>
-        <div class="hint" id="hint">吃掉正确的词语小鱼。</div>
-        <div class="progress" id="progress"></div>
+        <button class="btn on" id="btnWord">词语对拼音</button>
+        <button class="btn" id="btnChar">单字对拼音</button>
+        <button class="btn" id="btnSent">句子(拼音)</button>
+        <button class="btn" id="btnTranslate">翻译挑战</button>
       </div>
     </div>
-
-    <div class="card right">
-      <div class="stats">
-        <div class="pill">✅ 分数 <b id="score">0</b></div>
-        <div class="pill">❤️ 生命 <b id="lives">3</b></div>
-        <button class="btn" id="btnPause">暂停</button>
-        <button class="btn" id="btnReset">重来</button>
-      </div>
+    <div class="prompt" style="margin-top: 10px;">
+      <div id="promptBig" class="promptBig">---</div>
+      <div id="hint" class="hint">准备开始...</div>
+      <div id="progress" class="progress"></div>
     </div>
   </div>
-
-  <div class="overlay" id="overlay">
-    <div class="modal">
-      <h2 id="ovTitle">已暂停</h2>
-      <p id="ovMsg">点“继续”回到游戏。</p>
-      <div class="row">
-        <span class="kbd">空格 = 暂停/继续</span>
-        <span class="kbd">R = 重来</span>
-        <span class="kbd">1/2/3 = 切换模式</span>
-      </div>
-      <div class="row">
-        <button class="btn" id="btnGo">继续</button>
-      </div>
+  <div class="card right">
+    <div style="font-size: 22px; font-weight: 900; color: var(--accent);">得分: <span id="score">0</span></div>
+    <div style="font-size: 15px; opacity: 0.8; font-weight: bold;">❤️ 生命: <span id="lives">3</span></div>
+    <div style="margin-top: 10px; display: flex; gap: 8px; justify-content: flex-end;">
+      <button class="btn" id="btnPause" style="background: rgba(0,0,0,0.4);">暂停</button>
+      <button class="btn" id="btnReset" style="background: rgba(0,0,0,0.4);">重置</button>
     </div>
   </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <h2 id="ovTitle" style="font-size: 56px; color: white; margin-bottom: 35px; text-shadow: 0 5px 15px black;">游戏结束</h2>
+  <button class="btn" style="padding: 15px 50px; font-size: 24px; background: var(--accent); color: black;" onclick="location.reload()">重新挑战</button>
+</div>
 
 <script>
-/* =========================
-   DATA (ESC-1-4 Part 2)
-   ========================= */
+// 词汇库
 const WORDS = [
-  {p:"zǎo", zh:"早"},
-  {p:"shàng", zh:"上"},
-  {p:"zǎoshang", zh:"早上"},
-  {p:"wǔ", zh:"午"},
-  {p:"shàngwǔ", zh:"上午"},
-  {p:"zhōng", zh:"中"},
-  {p:"zhōngwǔ", zh:"中午"},
-  {p:"xià", zh:"下"},
-  {p:"xiàwǔ", zh:"下午"},
-  {p:"wǎn", zh:"晚"},
-  {p:"wǎnshang", zh:"晚上"},
-  {p:"chà", zh:"差"},
+  {p:"zǎoshang", zh:"早上"}, {p:"shàngwǔ", zh:"上午"}, {p:"zhōngwǔ", zh:"中午"},
+  {p:"xiàwǔ", zh:"下午"}, {p:"wǎnshang", zh:"晚上"}, {p:"chà", zh:"差"},
+  {p:"diǎn", zh:"点"}, {p:"fēn", zh:"分"}, {p:"kè", zh:"刻"}, {p:"bàn", zh:"半"}, 
+  {p:"liǎng", zh:"两"}, {p:"líng", zh:"零"}
 ];
 
-const CHAR_ONLY = [
-  {p:"zǎo", zh:"早"},
-  {p:"shàng", zh:"上"},
-  {p:"wǔ", zh:"午"},
-  {p:"zhōng", zh:"中"},
-  {p:"xià", zh:"下"},
-  {p:"wǎn", zh:"晚"},
-  {p:"chà", zh:"差"},
+const CHARS = [
+  {p:"zǎo", zh:"早"}, {p:"shàng", zh:"上"}, {p:"wǔ", zh:"午"}, {p:"zhōng", zh:"中"},
+  {p:"xià", zh:"下"}, {p:"wǎn", zh:"晚"}, {p:"diǎn", zh:"点"}, {p:"fēn", zh:"分"},
+  {p:"líng", zh:"零"}, {p:"liǎng", zh:"两"}, {p:"kè", zh:"刻"}, {p:"bàn", zh:"半"}, {p:"le", zh:"了"}
 ];
 
+// 加入更复杂的句子
 const SENTENCES = [
-  { p:"xiàn zài zǎoshang wǔ diǎn wǔ shí fēn", tokens:["现","在","早","上","五","点","五","十","分"] },
-  { p:"xiàn zài shàngwǔ shí diǎn wǔ shí fēn", tokens:["现","在","上","午","十","点","五","十","分"] },
-  { p:"xiàn zài zhōngwǔ shí èr diǎn wǔ shí fēn", tokens:["现","在","中","午","十","二","点","五","十","分"] },
-  { p:"xiàn zài xiàwǔ wǔ diǎn wǔ shí fēn", tokens:["现","在","下","午","五","点","五","十","分"] },
-  { p:"xiàn zài wǎnshang liù diǎn wǔ shí fēn", tokens:["现","在","晚","上","六","点","五","十","分"] },
-  { p:"xiàn zài chà shí fēn bā diǎn", tokens:["现","在","差","十","分","八","点"] },
+  { p:"xiànzài jǐ diǎn le?", en:"What time is it now?", tokens:["现","在","几","点","了","？"] },
+  { p:"xiànzài liù diǎn shí fēn", en:"It's 6:10", tokens:["现","在","六","点","十","分"] },
+  { p:"xiànzài bā diǎn líng wǔ fēn", en:"It's 8:05", tokens:["现","在","八","点","零","五","分"] },
+  { p:"xiànzài jiǔ diǎn yí kè", en:"It's 9:15", tokens:["现","在","九","点","一","刻"] },
+  { p:"xiànzài shí yī diǎn bàn", en:"It's 11:30", tokens:["现","在","十","一","点","半"] },
+  { p:"xiànzài chà shí fēn bā diǎn", en:"It's 10 to 8", tokens:["现","在","差","十","分","八","点"] },
+  // 复杂句子
+  { p:"xiànzài wǎnshang shíyī diǎn sān kè", en:"It's 11:45 PM", tokens:["现","在","晚","上","十","一","点","三","刻"] },
+  { p:"xiànzài zǎoshang wǔ diǎn líng wǔ fēn", en:"It's 5:05 AM", tokens:["现","在","早","上","五","点","零","五","分"] },
+  { p:"xiànzài zhōngwǔ shíèr diǎn bàn", en:"It's 12:30 PM", tokens:["现","在","中","午","十","二","点","半"] },
+  { p:"xiànzài xiàwǔ liǎng diǎn yí kè", en:"It's 2:15 PM", tokens:["现","在","下","午","两","点","一","刻"] }
 ];
 
-const CHAR_POOL = ["现","在","早","上","午","中","下","晚","差","点","分","十","一","二","三","四","五","六","七","八","九","零"];
+const POOL = ["现","在","早","上","中","下","晚","午","点","分","十","五","八","一","刻","两","差","零","了","几","六","三","二","？"];
 
-/* =========================
-   STATE
-   ========================= */
-const ocean = document.getElementById("ocean");
-const bigFish = document.getElementById("bigFish");
+let score=0, lives=3, mode="word", running=true, paused=false, fishEls=[], target=null, sentence=null, sIndex=0;
 
-const promptBig = document.getElementById("promptBig");
-const hint = document.getElementById("hint");
-const progress = document.getElementById("progress");
-
-const scoreEl = document.getElementById("score");
-const livesEl = document.getElementById("lives");
-
-const overlay = document.getElementById("overlay");
-const ovTitle = document.getElementById("ovTitle");
-const ovMsg = document.getElementById("ovMsg");
-const btnGo = document.getElementById("btnGo");
-
-const btnPause = document.getElementById("btnPause");
-const btnReset = document.getElementById("btnReset");
-
-const btnModeWord = document.getElementById("btnModeWord");
-const btnModeChar = document.getElementById("btnModeChar");
-const btnModeSentence = document.getElementById("btnModeSentence");
-
-let running=true;
-let paused=false;
-
-let mode="word"; // word | char | sentence
-let score=0;
-let lives=3;
-
-let target=null;
-let sentence=null;
-let sIndex=0;
-
-let fishEls=[]; // current small fish elements
-let animId=null;
-let lastTs=performance.now();
-
-/* =========================
-   HELPERS
-   ========================= */
-function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
-function shuffle(a){
-  const b=[...a];
-  for(let i=b.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [b[i],b[j]]=[b[j],b[i]];
-  }
-  return b;
-}
-function updateHUD(){ scoreEl.textContent=String(score); livesEl.textContent=String(lives); }
-function showOverlay(title, message){
-  ovTitle.textContent = title;
-  ovMsg.textContent = message;
-  overlay.style.display="flex";
-}
-function hideOverlay(){ overlay.style.display="none"; }
-function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
-function oceanRect(){ return ocean.getBoundingClientRect(); }
-
-/* ===== NEW: HUD bottom as safe top line ===== */
-function safeTopY(){
-  const hud = document.querySelector(".hud");
-  if(!hud) return 180;
-  const r = hud.getBoundingClientRect();
-  return Math.max(160, r.bottom + 18); // leave a gap under HUD
+function updateHUD() {
+  document.getElementById("score").innerText = score;
+  document.getElementById("lives").innerText = lives;
 }
 
-/* =========================
-   BUBBLES (background)
-   ========================= */
-function spawnBubble(){
-  const b=document.createElement("div");
-  b.className="bubble";
-  const r=oceanRect();
-  const x=Math.random()*r.width;
-  const size=10+Math.random()*18;
-  b.style.left = x+"px";
-  b.style.width = size+"px";
-  b.style.height = size+"px";
-  b.style.animationDuration = (6+Math.random()*8)+"s";
-  b.style.animationDelay = (Math.random()*1.5)+"s";
-  ocean.appendChild(b);
-  setTimeout(()=>b.remove(), 16000);
-}
-setInterval(()=>{ if(!paused) spawnBubble(); }, 450);
+function spawnFish(label) {
+  const el = document.createElement("div");
+  el.className = "smallFish";
+  el.innerHTML = `<span class="char">${label}</span>`;
+  
+  // 严格限制 y 坐标在屏幕 250px 以下游动，不遮挡文字区
+  const x = Math.random() * (window.innerWidth - 200) + 100;
+  const y = Math.random() * (window.innerHeight - 380) + 260; 
+  
+  el.style.left = x + "px";
+  el.style.top = y + "px";
+  
+  const vx = (Math.random() - 0.5) * 120;
+  const vy = (Math.random() - 0.5) * 80;
+  
+  if(vx > 0) el.classList.add('facing-left'); else el.classList.add('facing-right');
 
-/* =========================
-   SMALL FISH
-   ========================= */
-function clearSmallFish(){
-  fishEls.forEach(f=>f.el.remove());
-  fishEls=[];
-}
-
-function createSmallFish(label){
-  const el=document.createElement("div");
-  el.className="smallFish";
-  el.innerHTML = `<div class="eye"></div><div class="tail"></div><div class="char"></div>`;
-  el.querySelector(".char").textContent = label;
-
-  const r=oceanRect();
-
-  /* ===== FIX: spawn INSIDE the screen immediately ===== */
-  const minY = safeTopY();
-  const maxY = Math.max(minY + 60, r.height - 80);
-  const y = minY + Math.random()*(maxY - minY);
-
-  const x = 40 + Math.random()*(r.width - 160);  // inside
-  const dir = Math.random() < 0.5 ? 1 : -1;
-
-  el.style.left = x+"px";
-  el.style.top = y+"px";
-
-  const speed = 55 + Math.random()*70; // a bit faster
-  const wob = 8 + Math.random()*16;
-  const phase = Math.random()*Math.PI*2;
-
-  ocean.appendChild(el);
-
-  const obj = { el, label, x, y, dir, speed, wob, phase, alive:true };
-
-  el.addEventListener("click", ()=>{
-    if(!running || paused) return;
-    eatFish(obj);
-  });
-
+  const obj = { el, label, x, y, vx, vy, alive: true };
+  el.onclick = (e) => { e.stopPropagation(); eatFish(obj); };
+  document.getElementById("fish-container").appendChild(el);
   fishEls.push(obj);
 }
 
-function layoutFishChoices(choices){
-  clearSmallFish();
-  choices.forEach(ch => createSmallFish(ch));
-}
+function newRound() {
+  fishEls.forEach(f => f.el.remove()); fishEls = [];
+  document.getElementById("progress").innerHTML = ""; // 清空之前的句子进度
 
-function tick(ts){
-  const dt = (ts - lastTs) / 1000;
-  lastTs = ts;
-  if(!paused && running){
-    const r=oceanRect();
-    const minY = safeTopY();
-    const maxY = Math.max(minY + 60, r.height - 80);
-
-    fishEls.forEach(f=>{
-      if(!f.alive) return;
-      f.phase += dt*2.2;
-      f.x += f.dir * f.speed * dt;
-
-      const yy = clamp(f.y + Math.sin(f.phase)*f.wob, minY, maxY);
-      f.el.style.left = f.x + "px";
-      f.el.style.top  = yy + "px";
-
-      /* ===== FIX: when offscreen, respawn inside (not outside) ===== */
-      if(f.x < -180 || f.x > r.width + 180){
-        f.dir = Math.random() < 0.5 ? 1 : -1;
-        f.x = 40 + Math.random()*(r.width - 160);
-        f.y = minY + Math.random()*(maxY - minY);
-        f.speed = 55 + Math.random()*70;
-        f.wob = 8 + Math.random()*16;
-        f.phase = Math.random()*Math.PI*2;
-      }
-    });
-  }
-  animId = requestAnimationFrame(tick);
-}
-animId = requestAnimationFrame(tick);
-
-/* =========================
-   BIG FISH ACTIONS
-   ========================= */
-function moveBigFishTo(el){
-  const r=oceanRect();
-  const fr = el.getBoundingClientRect();
-  const centerX = fr.left - r.left + fr.width/2;
-  const centerY = fr.top  - r.top  + fr.height/2;
-  const bx = clamp(centerX-70, 12, r.width-160);
-  const by = clamp(centerY-40, safeTopY(), r.height-110);
-  bigFish.style.left = bx+"px";
-  bigFish.style.top  = by+"px";
-}
-function happy(){
-  bigFish.classList.remove("spit");
-  bigFish.classList.add("happy");
-  setTimeout(()=>bigFish.classList.remove("happy"), 380);
-}
-function spit(){
-  bigFish.classList.remove("happy");
-  bigFish.classList.add("spit");
-  setTimeout(()=>bigFish.classList.remove("spit"), 460);
-}
-function bubbleBurst(x, y){
-  for(let i=0;i<10;i++){
-    const b=document.createElement("div");
-    b.className="bubble";
-    const size = 8 + Math.random()*10;
-    b.style.width = size+"px";
-    b.style.height = size+"px";
-    b.style.left = (x + (Math.random()*40-20))+"px";
-    b.style.bottom = "auto";
-    b.style.top = (y + (Math.random()*40-20))+"px";
-    b.style.animationDuration = (2.6+Math.random()*1.8)+"s";
-    b.style.animationDelay = "0s";
-    ocean.appendChild(b);
-    setTimeout(()=>b.remove(), 4200);
+  if (mode === "word") {
+    target = WORDS[Math.floor(Math.random() * WORDS.length)];
+    document.getElementById("promptBig").innerText = target.p; // 只显示拼音
+    document.getElementById("hint").innerText = "找出正确的汉字词语小鱼";
+    const distract = WORDS.filter(w => w.zh !== target.zh).sort(() => 0.5 - Math.random()).slice(0, 5).map(w => w.zh);
+    [target.zh, ...distract].sort(() => 0.5 - Math.random()).forEach(spawnFish);
+  } else if (mode === "char") {
+    target = CHARS[Math.floor(Math.random() * CHARS.length)];
+    document.getElementById("promptBig").innerText = target.p; // 只显示拼音
+    document.getElementById("hint").innerText = "找出对应拼音的单字小鱼";
+    const distract = CHARS.filter(c => c.zh !== target.zh).sort(() => 0.5 - Math.random()).slice(0, 5).map(c => c.zh);
+    [target.zh, ...distract].sort(() => 0.5 - Math.random()).forEach(spawnFish);
+  } else if (mode === "sent") {
+    sentence = SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
+    sIndex = 0;
+    document.getElementById("promptBig").innerText = sentence.p;
+    document.getElementById("hint").innerText = "按照拼音顺序吃掉正确的字";
+    renderSentProgress();
+    spawnSentFish();
+  } else if (mode === "translate") {
+    sentence = SENTENCES[Math.floor(Math.random() * SENTENCES.length)];
+    sIndex = 0;
+    document.getElementById("promptBig").innerText = sentence.en; // 翻译模式显示英文
+    document.getElementById("hint").innerText = "翻译该时间，按顺序吃鱼";
+    renderSentProgress();
+    spawnSentFish();
   }
 }
 
-/* =========================
-   GAME LOGIC
-   ========================= */
-function renderProgress(){
-  progress.innerHTML="";
-  if(mode!=="sentence" || !sentence) return;
-  sentence.tokens.forEach((t,i)=>{
-    const s=document.createElement("span");
-    s.className="tok";
-    s.textContent=t;
-    if(i < sIndex) s.classList.add("done");
-    if(i === sIndex) s.classList.add("now");
-    progress.appendChild(s);
+function spawnSentFish() {
+  fishEls.forEach(f => f.el.remove()); fishEls = [];
+  const need = sentence.tokens[sIndex];
+  const distract = POOL.filter(p => p !== need).sort(() => 0.5 - Math.random()).slice(0, 5);
+  [need, ...distract].sort(() => 0.5 - Math.random()).forEach(spawnFish);
+}
+
+function renderSentProgress() {
+  const box = document.getElementById("progress"); box.innerHTML = "";
+  sentence.tokens.forEach((t, i) => {
+    const s = document.createElement("span"); 
+    s.className = "tok" + (i < sIndex ? " done" : "") + (i === sIndex ? " now" : "");
+    s.innerText = t; box.appendChild(s);
   });
 }
 
-function newRound(){
-  if(mode==="word"){
-    target = pick(WORDS);
-    promptBig.textContent = target.p;
-    hint.textContent = "吃掉正确的词语小鱼。";
-    progress.innerHTML="";
+function eatFish(fish) {
+  if (!running || paused || !fish.alive) return;
+  const isSentMode = (mode === "sent" || mode === "translate");
+  const correct = isSentMode ? sentence.tokens[sIndex] : target.zh;
+  const big = document.getElementById("bigFish");
+  
+  // 大鱼扑向小鱼
+  big.style.left = fish.x + "px";
+  big.style.top = fish.y + "px";
+  big.style.transform = `translate(-50%, -50%) scale(1.1)`;
 
-    const pool = WORDS.map(x=>x.zh);
-    const distract = shuffle(pool.filter(z=>z!==target.zh)).slice(0,4);
-    const choices = shuffle([target.zh, ...distr]).slice(0,5);
-    layoutFishChoices(choices);
-  }
-
-  if(mode==="char"){
-    target = pick(CHAR_ONLY);
-    promptBig.textContent = target.p;
-    hint.textContent = "吃掉正确的单字小鱼。";
-    progress.innerHTML="";
-
-    const pool = CHAR_ONLY.map(x=>x.zh);
-    const distract = shuffle(pool.filter(z=>z!==target.zh)).slice(0,4);
-    const choices = shuffle([target.zh, ...distr]).slice(0,5);
-    layoutFishChoices(choices);
-  }
-
-  if(mode==="sentence"){
-    sentence = pick(SENTENCES);
-    sIndex = 0;
-    promptBig.textContent = sentence.p;
-    hint.textContent = "按顺序吃掉句子里的下一个字。";
-    renderProgress();
-
-    const need = sentence.tokens[sIndex];
-    const distract = shuffle(CHAR_POOL.filter(c=>c!==need)).slice(0,4);
-    const choices = shuffle([need, ...distr]).slice(0,5);
-    layoutFishChoices(choices);
-  }
-}
-
-function getCorrectAnswer(){
-  if(mode==="word") return target.zh;
-  if(mode==="char") return target.zh;
-  if(mode==="sentence") return sentence.tokens[sIndex];
-}
-
-function eatFish(fish){
-  if(!fish.alive) return;
-  fish.alive=false;
-
-  const correct = getCorrectAnswer();
-  const isCorrect = (fish.label === correct);
-
-  fish.el.classList.add(isCorrect ? "good" : "bad");
-  moveBigFishTo(fish.el);
-
-  const fr = fish.el.getBoundingClientRect();
-  const r = oceanRect();
-  const cx = fr.left - r.left + fr.width/2;
-  const cy = fr.top  - r.top  + fr.height/2;
-
-  setTimeout(()=>{
-    if(isCorrect){
-      fish.el.style.opacity="0";
-      bubbleBurst(cx, cy);
-      happy();
-      score += 1;
-      updateHUD();
-      setTimeout(()=>fish.el.remove(), 120);
-
-      if(mode==="sentence"){
-        sIndex += 1;
-        if(sIndex >= sentence.tokens.length){
-          score += 2; // bonus
-          updateHUD();
-          newRound();
-          return;
-        }else{
-          renderProgress();
-          const need = sentence.tokens[sIndex];
-          const distract = shuffle(CHAR_POOL.filter(c=>c!==need)).slice(0,4);
-          const choices = shuffle([need, ...distr]).slice(0,5);
-          layoutFishChoices(choices);
-          return;
-        }
-      }
-      newRound();
-    }else{
-      spit();
-      lives -= 1;
-      updateHUD();
-
-      fish.alive=true;
+  if (fish.label === correct) {
+    fish.alive = false; fish.el.classList.add("good");
+    score += 10; updateHUD();
+    setTimeout(() => {
+      fish.el.style.opacity = "0";
+      big.style.transform = `translate(-50%, -50%) scale(1)`;
+      if (isSentMode) {
+        sIndex++; 
+        if (sIndex >= sentence.tokens.length) { score += 50; newRound(); }
+        else { renderSentProgress(); spawnSentFish(); }
+      } else { newRound(); }
+    }, 400);
+  } else {
+    fish.el.classList.add("bad"); lives--; updateHUD();
+    if (lives <= 0) { running = false; document.getElementById("overlay").style.display = "flex"; }
+    setTimeout(() => {
+      big.style.left = "50%"; big.style.top = "65%";
+      big.style.transform = `translate(-50%, -50%)`;
       fish.el.classList.remove("bad");
-      fish.el.style.opacity="1";
+    }, 500);
+  }
+}
 
-      if(lives<=0){
-        running=false;
-        showOverlay("游戏结束", "生命用完了。点“继续”重开。");
+function tick() {
+  if (running && !paused) {
+    fishEls.forEach(f => {
+      if (!f.alive) return;
+      f.x += f.vx * 0.016; f.y += f.vy * 0.016;
+      if (f.x < 50 || f.x > window.innerWidth - 120) { 
+        f.vx *= -1; 
+        f.el.classList.toggle('facing-left'); f.el.classList.toggle('facing-right'); 
       }
-    }
-  }, 240);
+      // 上边界保护：250px 处反弹
+      if (f.y < 250 || f.y > window.innerHeight - 80) f.vy *= -1;
+      f.el.style.left = f.x + "px"; f.el.style.top = f.y + "px";
+    });
+  }
+  requestAnimationFrame(tick);
 }
 
-/* =========================
-   CONTROLS
-   ========================= */
-function setMode(m){
-  mode=m;
-  btnModeWord.classList.toggle("on", mode==="word");
-  btnModeChar.classList.toggle("on", mode==="char");
-  btnModeSentence.classList.toggle("on", mode==="sentence");
-  newRound();
+document.getElementById("btnWord").onclick = () => { mode = "word"; switchBtn("btnWord"); newRound(); };
+document.getElementById("btnChar").onclick = () => { mode = "char"; switchBtn("btnChar"); newRound(); };
+document.getElementById("btnSent").onclick = () => { mode = "sent"; switchBtn("btnSent"); newRound(); };
+document.getElementById("btnTranslate").onclick = () => { mode = "translate"; switchBtn("btnTranslate"); newRound(); };
+
+function switchBtn(id) {
+  document.querySelectorAll(".modebar .btn").forEach(b => b.classList.remove("on"));
+  document.getElementById(id).classList.add("on");
 }
+document.getElementById("btnPause").onclick = () => { paused = !paused; document.getElementById("btnPause").innerText = paused ? "继续" : "暂停"; };
+document.getElementById("btnReset").onclick = () => location.reload();
 
-function resetGame(){
-  running=true; paused=false;
-  score=0; lives=3;
-  updateHUD();
-  hideOverlay();
-  bigFish.style.left = "60vw";
-  bigFish.style.top  = "62vh";
-  newRound();
-}
-
-function togglePause(){
-  if(!running) return;
-  paused = !paused;
-  btnPause.textContent = paused ? "继续" : "暂停";
-  if(paused) showOverlay("已暂停", "点“继续”回到游戏。");
-  else hideOverlay();
-}
-
-btnModeWord.addEventListener("click",()=> setMode("word"));
-btnModeChar.addEventListener("click",()=> setMode("char"));
-btnModeSentence.addEventListener("click",()=> setMode("sentence"));
-
-btnReset.addEventListener("click",()=> resetGame());
-btnPause.addEventListener("click",()=> togglePause());
-
-btnGo.addEventListener("click",()=>{
-  if(!running){ resetGame(); return; }
-  paused=false;
-  hideOverlay();
-  btnPause.textContent="暂停";
-});
-
-window.addEventListener("keydown",(e)=>{
-  if(e.code==="Space"){ e.preventDefault(); togglePause(); }
-  if(e.key.toLowerCase()==="r"){ e.preventDefault(); resetGame(); }
-  if(e.key==="1"){ setMode("word"); }
-  if(e.key==="2"){ setMode("char"); }
-  if(e.key==="3"){ setMode("sentence"); }
-});
-
-/* =========================
-   INIT
-   ========================= */
-updateHUD();
-newRound();
+updateHUD(); newRound(); tick();
 </script>
 </body>
 </html>
