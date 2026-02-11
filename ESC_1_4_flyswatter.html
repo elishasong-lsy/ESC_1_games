@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ESC-1-4 时间｜苍蝇拍（单字 / 句子顺序）v3.1</title>
+  <style>
+    :root{
+      --bg1:#040712;
+      --bg2:#00020a;
+      --panel: rgba(255,255,255,.10);
+      --border: rgba(255,255,255,.20);
+      --text:#f4f7ff;
+      --muted:#c3cffc;
+      --accent:#ffd54a;
+      --good:#6CFFB3;
+      --bad:#ff5f86;
+      --shadow: 0 22px 70px rgba(0,0,0,.70);
+      --radius: 18px;
+
+      --flyDark:#0c0f1a;
+      --flyMid:#1d2436;
+      --flyLight:#3b4a68;
+      --flyWing: rgba(235,245,255,.48);
+    }
+    *{ box-sizing:border-box; }
+    body{
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 800px at 20% 10%, rgba(120,110,255,.25), transparent 55%),
+        radial-gradient(1200px 800px at 90% 40%, rgba(255,213,74,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      overflow:hidden;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+
+    /* HUD */
+    .hud{
+      position:fixed;
+      top:14px; left:14px; right:14px;
+      display:flex;
+      gap:12px;
+      align-items:stretch;
+      z-index:10;
+      pointer-events:none;
+    }
+    .card{
+      pointer-events:auto;
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:12px 14px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    .card h1{
+      margin:0 0 6px;
+      font-size:16px;
+      color:var(--muted);
+      font-weight:800;
+    }
+    .prompt{ display:flex; flex-direction:column; gap:8px; }
+    .modebar{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .btn{
+      cursor:pointer;
+      border:none;
+      border-radius:12px;
+      padding:10px 12px;
+      background:rgba(255,255,255,.12);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,.18);
+      font-weight:900;
+      transition: transform .12s ease, background .12s ease, border-color .12s ease;
+    }
+    .btn:hover{ background:rgba(255,255,255,.16); }
+    .btn:active{ transform: translateY(1px) scale(.99); }
+    .btn.on{
+      border-color: rgba(255,213,74,.70);
+      box-shadow: 0 0 0 5px rgba(255,213,74,.12);
+    }
+    .btn.warn.on{
+      border-color: rgba(255,95,134,.70);
+      box-shadow: 0 0 0 5px rgba(255,95,134,.12);
+    }
+    .pinyin{
+      font-size:32px;
+      font-weight:1000;
+      letter-spacing:.4px;
+      color:var(--accent);
+      text-shadow: 0 10px 26px rgba(255,213,74,.28);
+      line-height:1.05;
+    }
+    .hintline{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+      color:var(--muted); font-size:14px;
+    }
+    .stats{
+      display:flex; gap:10px; align-items:center;
+      font-size:14px; color:var(--muted); white-space:nowrap;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      background:rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.14);
+    }
+    .pill b{ color:var(--text); font-weight:1000; }
+
+    .seq{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      font-size:18px; margin-top:2px;
+    }
+    .tok{
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.24);
+      color: rgba(255,255,255,.96);
+      font-weight:1000;
+    }
+    .tok.done{
+      border-color: rgba(108,255,179,.50);
+      background: rgba(108,255,179,.14);
+      color: rgba(108,255,179,.98);
+    }
+    .tok.now{
+      border-color: rgba(255,213,74,.75);
+      background: rgba(255,213,74,.18);
+      color: rgba(255,213,74,.98);
+      box-shadow: 0 0 0 5px rgba(255,213,74,.10);
+    }
+
+    #field{ position:fixed; inset:0; }
+
+    /* ===== Fly ===== */
+    .fly{
+      position:absolute;
+      width:136px; height:112px;
+      transform: translate(-50%,-50%);
+      cursor:pointer;
+      pointer-events:auto;
+      will-change: transform, left, top;
+      filter: drop-shadow(0 18px 26px rgba(0,0,0,.45));
+    }
+
+    /* wings */
+    .fly .wings{
+      position:absolute; left:50%; top:10px;
+      width:150px; height:70px;
+      transform: translateX(-50%);
+      pointer-events:none;
+    }
+    .wing{
+      position:absolute; top:10px;
+      width:78px; height:50px;
+      border-radius:40px;
+      background:
+        radial-gradient(45px 28px at 30% 35%, rgba(255,255,255,.55), rgba(255,255,255,.14)),
+        linear-gradient(135deg, var(--flyWing), rgba(255,255,255,.10));
+      border:1px solid rgba(255,255,255,.22);
+      transform-origin: 88% 78%;
+      animation: flap .15s linear infinite;
+      box-shadow: 0 10px 22px rgba(0,0,0,.18);
+    }
+    .wing.left{ left:6px; transform: rotate(-20deg); }
+    .wing.right{ right:6px; transform: rotate(20deg) scaleX(-1); }
+    @keyframes flap{
+      0%{ transform: rotate(24deg) scale(1); opacity:.95; }
+      50%{ transform: rotate(-6deg) scale(.985); opacity:.78; }
+      100%{ transform: rotate(24deg) scale(1); opacity:.95; }
+    }
+
+    /* head */
+    .fly .head{
+      position:absolute; left:50%; top:38px;
+      width:44px; height:34px;
+      transform: translateX(-50%);
+      border-radius:20px;
+      background: linear-gradient(145deg, var(--flyMid), var(--flyDark));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .fly .eye{
+      position:absolute; top:8px;
+      width:14px; height:14px;
+      border-radius:999px;
+      background:
+        radial-gradient(7px 7px at 35% 35%, rgba(255,255,255,.22), rgba(0,0,0,.35)),
+        radial-gradient(10px 10px at 60% 65%, rgba(0,0,0,.65), rgba(0,0,0,.85));
+      border:1px solid rgba(255,255,255,.08);
+      opacity:.95;
+    }
+    .fly .eye.left{ left:8px; }
+    .fly .eye.right{ right:8px; }
+
+    /* thorax + abdomen */
+    .fly .thorax{
+      position:absolute; left:50%; top:56px;
+      width:78px; height:46px;
+      transform: translateX(-50%);
+      border-radius:26px;
+      background:
+        radial-gradient(70px 40px at 35% 30%, rgba(255,255,255,.14), transparent 60%),
+        linear-gradient(145deg, var(--flyLight), var(--flyDark));
+      border:1px solid rgba(255,255,255,.10);
+    }
+    .fly .abdomen{
+      position:absolute; left:50%; top:74px;
+      width:84px; height:54px;
+      transform: translateX(-50%);
+      border-radius:30px;
+      background:
+        linear-gradient(145deg, rgba(255,255,255,.08), transparent 40%),
+        linear-gradient(180deg, var(--flyMid), rgba(10,12,18,.95));
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+    }
+    .fly .abdomen:before{
+      content:"";
+      position:absolute; inset:10px 10px 12px;
+      border-radius:22px;
+      background:
+        repeating-linear-gradient(
+          90deg,
+          rgba(255,255,255,.10) 0px,
+          rgba(255,255,255,.10) 6px,
+          rgba(0,0,0,.10) 6px,
+          rgba(0,0,0,.10) 12px
+        );
+      opacity:.30;
+    }
+
+    /* legs */
+    .fly .legs{
+      position:absolute; left:50%; top:72px;
+      width:120px; height:54px;
+      transform: translateX(-50%);
+      pointer-events:none;
+      opacity:.92;
+    }
+    .leg{
+      position:absolute;
+      width:44px; height:3px;
+      background: rgba(0,0,0,.78);
+      border-radius:99px;
+      box-shadow: 0 2px 0 rgba(255,255,255,.08) inset;
+      filter: blur(.1px);
+    }
+    .leg.l1{ left:10px; top:10px; transform: rotate(18deg); }
+    .leg.l2{ left:8px; top:24px; transform: rotate(-10deg); }
+    .leg.l3{ left:14px; top:38px; transform: rotate(16deg); }
+    .leg.r1{ right:10px; top:10px; transform: rotate(-18deg); }
+    .leg.r2{ right:8px; top:24px; transform: rotate(10deg); }
+    .leg.r3{ right:14px; top:38px; transform: rotate(-16deg); }
+
+    /* label */
+    .fly .label{
+      position:absolute; left:50%; top:92px;
+      transform: translate(-50%,-50%);
+      width:66px; height:66px;
+      border-radius:18px;
+      display:flex; align-items:center; justify-content:center;
+      font-size:44px; font-weight:1000;
+      color:#ffffff;
+      text-shadow: 0 12px 26px rgba(0,0,0,.55);
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.18);
+      backdrop-filter: blur(2px);
+      -webkit-backdrop-filter: blur(2px);
+    }
+    .fly .face{
+      position:absolute; left:50%; top:110px;
+      transform: translateX(-50%);
+      font-size:16px;
+      pointer-events:none;
+    }
+
+    /* effects */
+    .poof{
+      position:absolute;
+      width:18px; height:18px; border-radius:999px;
+      left:50%; top:50%;
+      transform: translate(-50%,-50%);
+      background: rgba(255,213,74,.95);
+      box-shadow: 0 0 0 0 rgba(255,213,74,.45), 0 0 46px rgba(255,213,74,.35);
+      animation: poof 420ms ease-out forwards;
+      pointer-events:none;
+    }
+    @keyframes poof{
+      0%{ opacity:1; transform: translate(-50%,-50%) scale(.7); }
+      60%{ opacity:1; transform: translate(-50%,-50%) scale(2.5); }
+      100%{ opacity:0; transform: translate(-50%,-50%) scale(3.4); }
+    }
+    .fly.good{ animation: squish 260ms ease-out forwards; }
+    @keyframes squish{
+      0%{ transform: translate(-50%,-50%) scale(1); }
+      35%{ transform: translate(-50%,-50%) scale(.86); }
+      100%{ transform: translate(-50%,-50%) scale(.2); opacity:0; }
+    }
+    .fly.bad .label{
+      border-color: rgba(255,95,134,.75);
+      box-shadow: 0 0 0 5px rgba(255,95,134,.12);
+    }
+    .fly.bad{ animation: shake .35s ease-in-out 2; }
+    @keyframes shake{
+      0%{ transform: translate(-50%,-50%) rotate(0deg); }
+      20%{ transform: translate(-50%,-50%) rotate(-6deg); }
+      50%{ transform: translate(-50%,-50%) rotate(6deg); }
+      80%{ transform: translate(-50%,-50%) rotate(-4deg); }
+      100%{ transform: translate(-50%,-50%) rotate(0deg); }
+    }
+    .fly.bad .abdomen::after{
+      content:"";
+      position:absolute; left:50%; bottom:10px;
+      width:18px; height:10px;
+      transform: translateX(-50%);
+      border-radius:999px;
+      background: rgba(255,95,134,.80);
+      animation: butt 240ms ease-in-out 4;
+    }
+    @keyframes butt{
+      0%{ transform: translateX(-50%) rotate(0deg); }
+      50%{ transform: translateX(-50%) rotate(18deg); }
+      100%{ transform: translateX(-50%) rotate(0deg); }
+    }
+
+    /* overlay */
+    .overlay{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      z-index:20;
+      background: rgba(0,0,0,.40);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .modal{
+      width:min(900px, 92vw);
+      padding:18px 18px 16px;
+      border-radius:22px;
+      background: rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow: var(--shadow);
+    }
+    .modal h2{ margin:0 0 8px; font-size:20px; }
+    .modal p{ margin:8px 0; color:var(--muted); line-height:1.45; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      padding:4px 8px;
+      border-radius:10px;
+      background: rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.14);
+      color:var(--text);
+    }
+
+    /* Freeze indicator */
+    .freezeBadge{
+      position:fixed;
+      right:14px;
+      bottom:14px;
+      z-index:12;
+      padding:10px 12px;
+      border-radius:14px;
+      background: rgba(0,0,0,.35);
+      border: 1px solid rgba(255,255,255,.18);
+      color: rgba(255,255,255,.92);
+      font-weight:900;
+      display:none;
+      box-shadow: var(--shadow);
+    }
+
+    @media (max-width: 640px){
+      .pinyin{ font-size:26px; }
+      .fly{ width:124px; height:104px; }
+      .fly .label{ width:60px; height:60px; font-size:40px; }
+      .seq{ font-size:16px; }
+      .stats{ justify-content:flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="hud" id="hud">
+    <div class="card" style="flex:1 1 auto;">
+      <h1>ESC-1-4 时间｜苍蝇拍（单字 / 句子顺序）v3.1</h1>
+
+      <div class="prompt">
+        <div class="modebar">
+          <button class="btn on" id="btnModeWord">单字</button>
+          <button class="btn" id="btnModeSentence">句子顺序</button>
+          <span style="color:var(--muted);font-size:13px;">句子顺序：必须按顺序打</span>
+        </div>
+
+        <div class="pinyin" id="pinyin">fēn</div>
+
+        <div class="hintline">
+          <span id="hint">打中对应的汉字。</span>
+          <span id="extra" style="opacity:.95"></span>
+        </div>
+
+        <div class="seq" id="seq" style="display:none;"></div>
+      </div>
+    </div>
+
+    <div class="card" style="flex:0 0 auto;">
+      <div class="stats">
+        <div class="pill">✅ 分数 <b id="score">0</b></div>
+
+        <button class="btn" id="btnStart">开始/菜单</button>
+        <button class="btn" id="btnPause">暂停</button>
+        <button class="btn warn" id="btnFreeze">Freeze</button>
+        <button class="btn" id="btnReset">重来</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="field" aria-label="playfield"></div>
+  <div class="freezeBadge" id="freezeBadge">🧊 FREEZE（冻结中）</div>
+
+  <div class="overlay" id="overlay">
+    <div class="modal">
+      <h2>怎么玩</h2>
+      <p><b style="color:var(--accent)">单字模式</b>：出现拼音 → 打对应汉字（保证场上一定有目标字）。</p>
+      <p><b style="color:var(--accent)">句子顺序模式</b>：出现整句拼音 → 必须按进度条顺序打字（保证当前需要的字一定在场上）。</p>
+      <div class="row">
+        <span class="kbd">单击/触屏 = 打</span>
+        <span class="kbd">空格 = 暂停/继续</span>
+        <span class="kbd">F = Freeze/Unfreeze</span>
+        <span class="kbd">R = 重来</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnGo">开始游戏 / 继续</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /***********************
+     * Data
+     ***********************/
+    const WORDS = [
+      { pinyin: "diǎn",  hanzi: "点" },
+      { pinyin: "le",    hanzi: "了" },
+      { pinyin: "fēn",   hanzi: "分" },
+      { pinyin: "líng",  hanzi: "零" },
+      { pinyin: "kè",    hanzi: "刻" },
+      { pinyin: "bàn",   hanzi: "半" },
+      { pinyin: "liǎng", hanzi: "两" },
+    ];
+
+    const SENTENCES = [
+      { pinyin:"xiàn zài jǐ diǎn le", gloss:"现在几点了？", tokens:["现","在","几","点","了"] },
+      { pinyin:"xiàn zài liù diǎn shí fēn", gloss:"现在六点十分。", tokens:["现","在","六","点","十","分"] },
+      { pinyin:"xiàn zài bā diǎn líng wǔ fēn", gloss:"现在八点零五分。", tokens:["现","在","八","点","零","五","分"] },
+      { pinyin:"xiàn zài jiǔ diǎn yí kè", gloss:"现在九点一刻。", tokens:["现","在","九","点","一","刻"] },
+      { pinyin:"xiàn zài shí yī diǎn bàn", gloss:"现在十一点半。", tokens:["现","在","十","一","点","半"] },
+      { pinyin:"xiàn zài liǎng diǎn sān kè", gloss:"现在两点三刻。", tokens:["现","在","两","点","三","刻"] },
+    ];
+
+    const CHAR_POOL = [
+      "点","了","分","零","刻","半","两",
+      "现","在","几","十","一","二","三","四","五","六","七","八","九"
+    ];
+
+    /***********************
+     * Speed (slow & steady)
+     ***********************/
+    const FLY_COUNT = 10;
+    const SPEED_BASE = 0.70;
+    const STEP = 1.40;
+    const TURN_MS_MIN = 1600;
+    const TURN_MS_MAX = 2600;
+
+    /***********************/
+    const field = document.getElementById("field");
+    const hud = document.getElementById("hud");
+
+    const elPinyin = document.getElementById("pinyin");
+    const elHint = document.getElementById("hint");
+    const elExtra = document.getElementById("extra");
+    const elSeq = document.getElementById("seq");
+    const elScore = document.getElementById("score");
+
+    const overlay = document.getElementById("overlay");
+    const btnGo = document.getElementById("btnGo");
+
+    const btnStart = document.getElementById("btnStart");
+    const btnPause = document.getElementById("btnPause");
+    const btnReset = document.getElementById("btnReset");
+    const btnFreeze = document.getElementById("btnFreeze");
+    const freezeBadge = document.getElementById("freezeBadge");
+
+    const btnModeWord = document.getElementById("btnModeWord");
+    const btnModeSentence = document.getElementById("btnModeSentence");
+
+    let running=false;
+    let paused=false;
+    let frozen=false;
+    let score=0;
+
+    let mode="word";
+    let wordTarget=null;
+    let sentTarget=null;
+    let sentIndex=0;
+
+    const flies=[];
+
+    function rand(min,max){ return Math.random()*(max-min)+min; }
+    function pick(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+    function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+    /* ===== Play bounds avoid HUD ===== */
+    function playBounds(){
+      const rect = hud.getBoundingClientRect();
+      const topSafe = rect.bottom + 18;
+      const padX = 80, padBottom = 80;
+      return {
+        left: padX,
+        right: window.innerWidth - padX,
+        top: topSafe,
+        bottom: window.innerHeight - padBottom
+      };
+    }
+
+    /* ===== Mode ===== */
+    function setMode(newMode){
+      mode=newMode;
+      btnModeWord.classList.toggle("on", mode==="word");
+      btnModeSentence.classList.toggle("on", mode==="sentence");
+      elSeq.style.display = (mode==="sentence") ? "flex" : "none";
+
+      if(mode==="word") nextWordTarget();
+      else nextSentenceTarget();
+
+      ensureNeededCharPresent();
+    }
+
+    function nextWordTarget(){
+      wordTarget = pick(WORDS);
+      elPinyin.textContent = wordTarget.pinyin;
+      elHint.textContent = "打中对应的汉字。";
+      elExtra.textContent = `目标：${wordTarget.hanzi}`;
+    }
+
+    function renderSentenceProgress(){
+      elSeq.innerHTML="";
+      sentTarget.tokens.forEach((t,i)=>{
+        const s=document.createElement("span");
+        s.className="tok";
+        s.textContent=t;
+        if(i<sentIndex) s.classList.add("done");
+        if(i===sentIndex) s.classList.add("now");
+        elSeq.appendChild(s);
+      });
+    }
+
+    function nextSentenceTarget(){
+      sentTarget = pick(SENTENCES);
+      sentIndex = 0;
+      elPinyin.textContent = sentTarget.pinyin;
+      elHint.textContent = "按顺序打字（看下面进度条）。";
+      elExtra.textContent = `句子：${sentTarget.gloss}`;
+      renderSentenceProgress();
+    }
+
+    function currentNeededChar(){
+      if(mode!=="sentence") return null;
+      return sentTarget.tokens[sentIndex] || null;
+    }
+
+    function advanceSentence(){
+      sentIndex += 1;
+      if(sentIndex >= sentTarget.tokens.length){
+        score += 2;
+        elScore.textContent = String(score);
+        nextSentenceTarget();
+      }else{
+        renderSentenceProgress();
+      }
+      ensureNeededCharPresent();
+    }
+
+    /* ===== Ensure needed char present ===== */
+    function neededChar(){
+      return (mode==="word") ? (wordTarget?.hanzi ?? null) : currentNeededChar();
+    }
+    function countCharOnField(ch){
+      let c=0;
+      for(const f of flies){
+        if(f.alive && f.char===ch) c++;
+      }
+      return c;
+    }
+    function forceSpawnNeededChar(ch){
+      if(!ch) return;
+      for(const f of flies){
+        if(f.alive && f.char !== ch){
+          f.char = ch;
+          f.el.querySelector(".label").textContent = ch;
+          return;
+        }
+      }
+    }
+    function ensureNeededCharPresent(){
+      const ch = neededChar();
+      if(!ch) return;
+      if(countCharOnField(ch) === 0){
+        forceSpawnNeededChar(ch);
+      }
+    }
+
+    /* ===== Fly create ===== */
+    function makeFly(char){
+      const fly=document.createElement("div");
+      fly.className="fly";
+      fly.innerHTML = `
+        <div class="wings">
+          <div class="wing left"></div>
+          <div class="wing right"></div>
+        </div>
+        <div class="head">
+          <div class="eye left"></div>
+          <div class="eye right"></div>
+        </div>
+        <div class="thorax"></div>
+        <div class="abdomen"></div>
+        <div class="legs">
+          <div class="leg l1"></div><div class="leg l2"></div><div class="leg l3"></div>
+          <div class="leg r1"></div><div class="leg r2"></div><div class="leg r3"></div>
+        </div>
+        <div class="label">${char}</div>
+        <div class="face">🙂</div>
+      `;
+
+      const b = playBounds();
+      const x=rand(b.left, b.right);
+      const y=rand(b.top, b.bottom);
+      fly.style.left=x+"px";
+      fly.style.top=y+"px";
+
+      const state={
+        el:fly, char,
+        x,y,
+        vx:rand(-1,1),
+        vy:rand(-1,1),
+        speed: rand(0.55, 0.95) * SPEED_BASE,
+        turnAt: performance.now() + rand(TURN_MS_MIN, TURN_MS_MAX),
+        alive:true
+      };
+
+      fly.addEventListener("pointerdown",(e)=>{
+        e.preventDefault();
+        if(!running || paused) return;
+        swat(state);
+      },{passive:false});
+
+      field.appendChild(fly);
+      return state;
+    }
+
+    function poofAt(x,y){
+      const p=document.createElement("div");
+      p.className="poof";
+      p.style.left=x+"px";
+      p.style.top=y+"px";
+      field.appendChild(p);
+      setTimeout(()=>p.remove(), 500);
+    }
+
+    function wrongFeedback(f){
+      f.el.classList.remove("good");
+      f.el.classList.add("bad");
+      f.el.querySelector(".face").textContent="😂";
+      setTimeout(()=>{
+        if(!f.el) return;
+        f.el.classList.remove("bad");
+        f.el.querySelector(".face").textContent="🙂";
+      }, 900);
+    }
+
+    function respawnFly(oldState){
+      if(!running) return;
+      const newChar = pick(CHAR_POOL);
+      const nf = makeFly(newChar);
+      const idx = flies.indexOf(oldState);
+      if(idx>=0) flies[idx]=nf;
+      ensureNeededCharPresent();
+    }
+
+    function swat(f){
+      const rect=f.el.getBoundingClientRect();
+      poofAt(rect.left+rect.width/2, rect.top+rect.height/2);
+
+      if(mode==="word"){
+        const ok = (f.char === wordTarget.hanzi);
+        if(ok){
+          score += 1;
+          elScore.textContent=String(score);
+          f.el.classList.add("good");
+          f.el.querySelector(".face").textContent="💥";
+          f.alive=false;
+          setTimeout(()=>{
+            if(f.el && f.el.parentNode) f.el.remove();
+            respawnFly(f);
+          }, 280);
+          nextWordTarget();
+          ensureNeededCharPresent();
+        }else{
+          wrongFeedback(f);
+        }
+        return;
+      }
+
+      const need = currentNeededChar();
+      const ok = (f.char === need);
+      if(ok){
+        score += 1;
+        elScore.textContent=String(score);
+        f.el.classList.add("good");
+        f.el.querySelector(".face").textContent="💥";
+        f.alive=false;
+        setTimeout(()=>{
+          if(f.el && f.el.parentNode) f.el.remove();
+          respawnFly(f);
+        }, 280);
+        advanceSentence();
+      }else{
+        wrongFeedback(f);
+      }
+    }
+
+    function initFlies(){
+      while(field.firstChild) field.removeChild(field.firstChild);
+      flies.length=0;
+      for(let i=0;i<FLY_COUNT;i++){
+        flies.push(makeFly(pick(CHAR_POOL)));
+      }
+      ensureNeededCharPresent();
+    }
+
+    function tickMove(now){
+      if(!running) return;
+      requestAnimationFrame(tickMove);
+      if(paused || frozen) return;
+
+      const b = playBounds();
+
+      for(const f of flies){
+        if(!f.alive) continue;
+
+        if(now >= f.turnAt){
+          const ax = rand(-1,1), ay = rand(-1,1);
+          f.vx = (f.vx*0.35) + ax*0.65;
+          f.vy = (f.vy*0.35) + ay*0.65;
+          const mag = Math.hypot(f.vx,f.vy) || 1;
+          f.vx/=mag; f.vy/=mag;
+          f.turnAt = now + rand(TURN_MS_MIN, TURN_MS_MAX);
+        }
+
+        f.x += f.vx * f.speed * STEP;
+        f.y += f.vy * f.speed * STEP;
+
+        if(f.x < b.left){ f.x=b.left; f.vx*=-1; }
+        if(f.x > b.right){ f.x=b.right; f.vx*=-1; }
+        if(f.y < b.top){ f.y=b.top; f.vy*=-1; }
+        if(f.y > b.bottom){ f.y=b.bottom; f.vy*=-1; }
+
+        const angle = Math.atan2(f.vy,f.vx)*180/Math.PI;
+        f.el.style.left=f.x+"px";
+        f.el.style.top=f.y+"px";
+        f.el.style.transform = `translate(-50%,-50%) rotate(${angle/10}deg)`;
+      }
+    }
+
+    /* ===== Controls ===== */
+    function resetGame(){
+      running=false;
+      paused=false;
+      frozen=false;
+      btnPause.textContent="暂停";
+      btnFreeze.textContent="Freeze";
+      btnFreeze.classList.remove("on");
+      freezeBadge.style.display="none";
+
+      score=0;
+      elScore.textContent="0";
+
+      initFlies();
+      if(mode==="word") nextWordTarget();
+      else nextSentenceTarget();
+      ensureNeededCharPresent();
+    }
+
+    function startGame(){
+      if(!running){
+        running=true;
+        paused=false;
+        // 不强制解冻：保持老师控场更直觉（但首次启动默认未冻）
+        requestAnimationFrame(tickMove);
+      }
+    }
+
+    function togglePause(){
+      if(!running) return;
+      paused = !paused;
+      btnPause.textContent = paused ? "继续" : "暂停";
+      if(paused){
+        showPauseOverlay("已暂停。你可以切换模式，或点击“开始游戏 / 继续”继续。");
+      }else{
+        overlay.style.display="none";
+      }
+    }
+
+    function toggleFreeze(){
+      if(!running) return;
+      frozen = !frozen;
+      btnFreeze.textContent = frozen ? "Unfreeze" : "Freeze";
+      btnFreeze.classList.toggle("on", frozen);
+      freezeBadge.style.display = frozen ? "block" : "none";
+      // 冻结不弹 overlay（让它更像“老师一键定格”）
+    }
+
+    function showPauseOverlay(message){
+      overlay.style.display = "flex";
+      overlay.querySelector("h2").textContent = "已暂停（可切换模式）";
+      overlay.querySelectorAll("p")[0].innerHTML = message || "";
+      overlay.querySelectorAll("p")[1].innerHTML =
+        `当前模式：<b style="color:var(--accent)">${mode==="word"?"单字":"句子顺序"}</b>`;
+      btnGo.textContent = "开始游戏 / 继续";
+    }
+
+    function pauseForSwitch(){
+      if(!running) return;
+      paused = true;
+      btnPause.textContent = "继续";
+      showPauseOverlay("已暂停。现在可以切换模式；切好后点“开始游戏 / 继续”。");
+    }
+
+    /* ===== Buttons ===== */
+    btnGo.addEventListener("click",()=>{
+      overlay.style.display="none";
+      if(!running){
+        resetGame();
+        startGame();
+      }else{
+        paused=false;
+        btnPause.textContent="暂停";
+      }
+    });
+
+    btnStart.addEventListener("click",()=>{
+      if(!running){
+        overlay.style.display="none";
+        startGame();
+      }else{
+        pauseForSwitch();
+      }
+    });
+
+    btnPause.addEventListener("click",()=>{ togglePause(); });
+
+    btnFreeze.addEventListener("click",()=>{ toggleFreeze(); });
+
+    btnReset.addEventListener("click",()=>{
+      overlay.style.display="none";
+      resetGame();
+      startGame();
+    });
+
+    /* ===== Mode switching (works anytime) ===== */
+    btnModeWord.addEventListener("click",()=>{
+      if(running && !paused) pauseForSwitch();
+      setMode("word");
+      resetGame();
+      // 不自动开：等你点继续
+      if(running) showPauseOverlay("已切换到“单字”。点击“开始游戏 / 继续”继续。");
+    });
+
+    btnModeSentence.addEventListener("click",()=>{
+      if(running && !paused) pauseForSwitch();
+      setMode("sentence");
+      resetGame();
+      if(running) showPauseOverlay("已切换到“句子顺序”。点击“开始游戏 / 继续”继续。");
+    });
+
+    window.addEventListener("keydown",(e)=>{
+      if(e.code==="Space"){ e.preventDefault(); togglePause(); }
+      if(e.key.toLowerCase()==="f"){ e.preventDefault(); toggleFreeze(); }
+      if(e.key.toLowerCase()==="r"){ e.preventDefault(); overlay.style.display="none"; resetGame(); startGame(); }
+    });
+
+    window.addEventListener("resize",()=>{
+      const b = playBounds();
+      for(const f of flies){
+        f.x = clamp(f.x, b.left, b.right);
+        f.y = clamp(f.y, b.top, b.bottom);
+      }
+    });
+
+    /* ===== Init ===== */
+    setMode("word");
+    resetGame();
+    // 初始显示 overlay，让你一开就能点开始
+  </script>
+</body>
+</html>
