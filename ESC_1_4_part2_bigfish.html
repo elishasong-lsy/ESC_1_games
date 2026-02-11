@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词/字/句子）v1.0</title>
+  <title>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词/字/句子）v1.1</title>
 
   <style>
     :root{
@@ -167,7 +167,7 @@
     }
     @keyframes drift{ 0%{transform:translateX(0)} 100%{transform:translateX(-240px)} }
 
-    /* corals (simple) */
+    /* corals */
     .coral{
       position:absolute;
       bottom:-10px;
@@ -249,30 +249,28 @@
       100%{ transform: translateX(0) rotate(0deg); }
     }
 
-    /* Small fish (click targets) */
+    /* Small fish */
     .smallFish{
       position:absolute;
-      width: 92px;
-      height: 56px;
+      width: 96px;
+      height: 58px;
       border-radius: 18px;
       display:flex;
       align-items:center;
       justify-content:center;
-      background: rgba(255,255,255,.12);
-      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.16);
+      border:1px solid rgba(255,255,255,.22);
       box-shadow: 0 16px 40px rgba(0,0,0,.45);
       cursor:pointer;
       z-index:9;
-      transform: translateZ(0);
       transition: transform .12s ease, opacity .2s ease;
       will-change: transform, left, top;
     }
-    .smallFish:hover{ transform: scale(1.03); }
+    .smallFish:hover{ transform: scale(1.04); }
     .smallFish:active{ transform: scale(.99); }
-
     .smallFish .char{
       font-weight:1000;
-      font-size:26px;
+      font-size:28px;
       color:#fff;
       text-shadow: 0 10px 18px rgba(0,0,0,.55);
       letter-spacing:.5px;
@@ -283,12 +281,12 @@
       width:0; height:0;
       border-top: 10px solid transparent;
       border-bottom: 10px solid transparent;
-      border-left: 14px solid rgba(255,255,255,.18);
+      border-left: 14px solid rgba(255,255,255,.22);
       filter: drop-shadow(0 8px 10px rgba(0,0,0,.35));
     }
     .smallFish .eye{
       position:absolute;
-      left:12px; top:22px;
+      left:12px; top:24px;
       width:6px; height:6px;
       border-radius:50%;
       background: rgba(0,0,0,.70);
@@ -367,7 +365,7 @@
   <div class="hud">
     <div class="card left">
       <div class="title">
-        <h1>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词 / 字 / 句子）v1.0</h1>
+        <h1>ESC-1-4 Part 2｜大鱼吃小鱼 Big Fish（词 / 字 / 句子）v1.1</h1>
       </div>
 
       <div class="modebar">
@@ -508,11 +506,15 @@ function showOverlay(title, message){
   overlay.style.display="flex";
 }
 function hideOverlay(){ overlay.style.display="none"; }
-
 function clamp(n,min,max){ return Math.max(min, Math.min(max, n)); }
+function oceanRect(){ return ocean.getBoundingClientRect(); }
 
-function oceanRect(){
-  return ocean.getBoundingClientRect();
+/* ===== NEW: HUD bottom as safe top line ===== */
+function safeTopY(){
+  const hud = document.querySelector(".hud");
+  if(!hud) return 180;
+  const r = hud.getBoundingClientRect();
+  return Math.max(160, r.bottom + 18); // leave a gap under HUD
 }
 
 /* =========================
@@ -549,31 +551,25 @@ function createSmallFish(label){
   el.querySelector(".char").textContent = label;
 
   const r=oceanRect();
-  // start off-screen left or right
-  const fromLeft = Math.random() < 0.5;
-  const x = fromLeft ? -120 : r.width + 120;
-  const y = 180 + Math.random()*(r.height-260); // avoid HUD area
+
+  /* ===== FIX: spawn INSIDE the screen immediately ===== */
+  const minY = safeTopY();
+  const maxY = Math.max(minY + 60, r.height - 80);
+  const y = minY + Math.random()*(maxY - minY);
+
+  const x = 40 + Math.random()*(r.width - 160);  // inside
+  const dir = Math.random() < 0.5 ? 1 : -1;
+
   el.style.left = x+"px";
   el.style.top = y+"px";
 
-  // motion
-  const speed = 40 + Math.random()*60; // px/s
-  const dir = fromLeft ? 1 : -1;
-  const wob = 10 + Math.random()*18;
+  const speed = 55 + Math.random()*70; // a bit faster
+  const wob = 8 + Math.random()*16;
   const phase = Math.random()*Math.PI*2;
 
   ocean.appendChild(el);
 
-  const obj = {
-    el,
-    label,
-    x, y,
-    dir,
-    speed,
-    wob,
-    phase,
-    alive:true
-  };
+  const obj = { el, label, x, y, dir, speed, wob, phase, alive:true };
 
   el.addEventListener("click", ()=>{
     if(!running || paused) return;
@@ -593,23 +589,25 @@ function tick(ts){
   lastTs = ts;
   if(!paused && running){
     const r=oceanRect();
+    const minY = safeTopY();
+    const maxY = Math.max(minY + 60, r.height - 80);
+
     fishEls.forEach(f=>{
       if(!f.alive) return;
       f.phase += dt*2.2;
       f.x += f.dir * f.speed * dt;
-      const yy = f.y + Math.sin(f.phase)*f.wob;
+
+      const yy = clamp(f.y + Math.sin(f.phase)*f.wob, minY, maxY);
       f.el.style.left = f.x + "px";
       f.el.style.top  = yy + "px";
 
-      // recycle if offscreen
+      /* ===== FIX: when offscreen, respawn inside (not outside) ===== */
       if(f.x < -180 || f.x > r.width + 180){
-        // reset
-        const fromLeft = Math.random() < 0.5;
-        f.dir = fromLeft ? 1 : -1;
-        f.x = fromLeft ? -120 : r.width + 120;
-        f.y = 180 + Math.random()*(r.height-260);
-        f.speed = 40 + Math.random()*60;
-        f.wob = 10 + Math.random()*18;
+        f.dir = Math.random() < 0.5 ? 1 : -1;
+        f.x = 40 + Math.random()*(r.width - 160);
+        f.y = minY + Math.random()*(maxY - minY);
+        f.speed = 55 + Math.random()*70;
+        f.wob = 8 + Math.random()*16;
         f.phase = Math.random()*Math.PI*2;
       }
     });
@@ -627,11 +625,10 @@ function moveBigFishTo(el){
   const centerX = fr.left - r.left + fr.width/2;
   const centerY = fr.top  - r.top  + fr.height/2;
   const bx = clamp(centerX-70, 12, r.width-160);
-  const by = clamp(centerY-40, 120, r.height-110);
+  const by = clamp(centerY-40, safeTopY(), r.height-110);
   bigFish.style.left = bx+"px";
   bigFish.style.top  = by+"px";
 }
-
 function happy(){
   bigFish.classList.remove("spit");
   bigFish.classList.add("happy");
@@ -642,9 +639,7 @@ function spit(){
   bigFish.classList.add("spit");
   setTimeout(()=>bigFish.classList.remove("spit"), 460);
 }
-
 function bubbleBurst(x, y){
-  // small burst bubbles
   for(let i=0;i<10;i++){
     const b=document.createElement("div");
     b.className="bubble";
@@ -716,6 +711,12 @@ function newRound(){
   }
 }
 
+function getCorrectAnswer(){
+  if(mode==="word") return target.zh;
+  if(mode==="char") return target.zh;
+  if(mode==="sentence") return sentence.tokens[sIndex];
+}
+
 function eatFish(fish){
   if(!fish.alive) return;
   fish.alive=false;
@@ -733,20 +734,17 @@ function eatFish(fish){
 
   setTimeout(()=>{
     if(isCorrect){
-      // swallow
       fish.el.style.opacity="0";
       bubbleBurst(cx, cy);
       happy();
       score += 1;
       updateHUD();
-
       setTimeout(()=>fish.el.remove(), 120);
 
       if(mode==="sentence"){
         sIndex += 1;
         if(sIndex >= sentence.tokens.length){
-          // bonus
-          score += 2;
+          score += 2; // bonus
           updateHUD();
           newRound();
           return;
@@ -759,16 +757,12 @@ function eatFish(fish){
           return;
         }
       }
-
-      // word/char -> next round
       newRound();
     }else{
-      // spit out (wrong)
       spit();
       lives -= 1;
       updateHUD();
 
-      // keep fish (spit back into ocean): revive and continue swimming
       fish.alive=true;
       fish.el.classList.remove("bad");
       fish.el.style.opacity="1";
@@ -779,12 +773,6 @@ function eatFish(fish){
       }
     }
   }, 240);
-}
-
-function getCorrectAnswer(){
-  if(mode==="word") return target.zh;
-  if(mode==="char") return target.zh;
-  if(mode==="sentence") return sentence.tokens[sIndex];
 }
 
 /* =========================
@@ -803,7 +791,6 @@ function resetGame(){
   score=0; lives=3;
   updateHUD();
   hideOverlay();
-  // reset big fish position
   bigFish.style.left = "60vw";
   bigFish.style.top  = "62vh";
   newRound();
