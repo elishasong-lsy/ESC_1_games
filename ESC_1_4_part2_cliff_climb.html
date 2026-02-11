@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ESC-1-4 Part 2｜悬崖攀登 Cliff Climb（词/字/句子）v1.2</title>
+  <title>ESC-1-4 Part 2｜悬崖攀登 Cliff Climb（词/字/句子）v1.3</title>
 
   <style>
     :root{
@@ -106,8 +106,9 @@
       line-height:1.3;
     }
 
+    /* 句子进度条 */
     .progress{
-      margin-top:8px;
+      margin-top:6px;
       display:flex; gap:8px; flex-wrap:wrap; align-items:center;
       font-size:18px;
     }
@@ -131,6 +132,38 @@
       box-shadow: 0 0 0 5px rgba(255,213,74,.10);
     }
 
+    /* ✅ 永远可见的“选项条”（关键修复） */
+    #choiceBar{
+      margin-top:8px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+    .choice{
+      cursor:pointer;
+      border-radius:16px;
+      padding:12px 16px;
+      background:rgba(0,0,0,.30);
+      border:1px solid rgba(255,255,255,.18);
+      color:#fff;
+      font-weight:1000;
+      font-size:20px;
+      min-width:64px;
+      text-align:center;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    .choice:hover{ border-color: rgba(255,213,74,.80); background:rgba(0,0,0,.36); }
+    .choice:active{ transform: translateY(1px) scale(.99); }
+    .choice.good{
+      border-color: rgba(99,255,176,.75);
+      box-shadow: 0 0 0 6px rgba(99,255,176,.12);
+    }
+    .choice.bad{
+      border-color: rgba(255,95,134,.85);
+      box-shadow: 0 0 0 6px rgba(255,95,134,.14);
+    }
+
     .stats{
       display:flex; flex-wrap:wrap; gap:10px; align-items:center;
       color:var(--muted);
@@ -145,7 +178,7 @@
     }
     .pill b{ color:var(--text); font-weight:1000; }
 
-    /* Scene background */
+    /* Scene */
     #scene{
       position:fixed;
       inset:0;
@@ -180,68 +213,12 @@
       border-right: 1px solid rgba(255,255,255,.12);
       box-shadow: 20px 0 60px rgba(0,0,0,.55);
     }
-
     .sky{
       position:absolute; inset:0;
       background:
         radial-gradient(900px 600px at 70% 10%, rgba(255,213,74,.12), transparent 55%),
         radial-gradient(900px 600px at 90% 30%, rgba(130,110,255,.14), transparent 60%);
       pointer-events:none;
-    }
-
-    /* ✅ Holds layer (顶层，绝不被盖住) */
-    #holdsLayer{
-      position:fixed;
-      inset:0;
-      z-index:40;            /* 比背景高，低于 HUD(50) */
-      pointer-events:auto;
-    }
-
-    .hold{
-      position:absolute;
-      width:170px;
-      height:74px;
-      transform: translate(-50%,-50%);
-      border-radius: 22px;
-      border: 1px solid rgba(255,255,255,.22);
-      background:
-        radial-gradient(110px 60px at 35% 30%, rgba(255,255,255,.18), transparent 60%),
-        linear-gradient(145deg, rgba(255,255,255,.12), rgba(0,0,0,.22));
-      box-shadow: 0 18px 40px rgba(0,0,0,.50);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease;
-      backdrop-filter: blur(2px);
-      -webkit-backdrop-filter: blur(2px);
-    }
-    .hold:hover{
-      transform: translate(-50%,-50%) scale(1.03);
-      border-color: rgba(255,213,74,.70);
-    }
-    .hold:active{ transform: translate(-50%,-50%) scale(.99); }
-    .hold .txt{
-      font-size:34px;
-      font-weight:1000;
-      color:#fff;
-      text-shadow: 0 12px 26px rgba(0,0,0,.55);
-      letter-spacing: .5px;
-    }
-    .hold.bad{
-      border-color: rgba(255,95,134,.85);
-      box-shadow: 0 0 0 6px rgba(255,95,134,.14), 0 18px 40px rgba(0,0,0,.50);
-      animation: wiggle .28s ease-in-out 2;
-    }
-    .hold.good{
-      border-color: rgba(99,255,176,.70);
-      box-shadow: 0 0 0 6px rgba(99,255,176,.12), 0 18px 40px rgba(0,0,0,.50);
-    }
-    @keyframes wiggle{
-      0%{ transform: translate(-50%,-50%) rotate(0deg); }
-      30%{ transform: translate(-50%,-50%) rotate(-4deg); }
-      60%{ transform: translate(-50%,-50%) rotate(4deg); }
-      100%{ transform: translate(-50%,-50%) rotate(0deg); }
     }
 
     /* Climber */
@@ -256,7 +233,7 @@
       background: rgba(0,0,0,.28);
       border: 1px solid rgba(255,255,255,.18);
       box-shadow: 0 22px 55px rgba(0,0,0,.55);
-      z-index:45; /* 在字卡上面一点点也行 */
+      z-index:45;
       transition: top .35s ease, left .35s ease;
       pointer-events:none;
     }
@@ -266,26 +243,7 @@
       100%{ transform: translateY(22px) rotate(8deg); }
     }
 
-    /* ✅ fallback choice bar (万一字卡没出现，也能玩) */
-    #fallbackBar{
-      margin-top:8px;
-      display:none;
-      gap:10px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .choice{
-      cursor:pointer;
-      border-radius:999px;
-      padding:10px 14px;
-      background:rgba(0,0,0,.30);
-      border:1px solid rgba(255,255,255,.18);
-      color:#fff;
-      font-weight:1000;
-    }
-    .choice:hover{ border-color: rgba(255,213,74,.70); }
-
-    /* Pause overlay */
+    /* Overlay */
     .overlay{
       position:fixed; inset:0;
       display:none;
@@ -317,11 +275,10 @@
     }
 
     @media (max-width: 780px){
-      .hold{ width:152px; height:70px; }
-      .hold .txt{ font-size:30px; }
       .promptBig{ font-size:26px; }
       .right{ min-width: 250px; }
       .climber{ left: 56vw; }
+      .choice{ font-size:18px; padding:10px 14px; }
     }
   </style>
 </head>
@@ -330,7 +287,7 @@
   <div class="hud">
     <div class="card left">
       <div class="title">
-        <h1>ESC-1-4 Part 2｜悬崖攀登 Cliff Climb（词 / 字 / 句子）v1.2</h1>
+        <h1>ESC-1-4 Part 2｜悬崖攀登 Cliff Climb（词 / 字 / 句子）v1.3</h1>
       </div>
 
       <div class="modebar">
@@ -346,8 +303,8 @@
 
         <div class="progress" id="progress" style="display:none;"></div>
 
-        <!-- ✅ fallback choice bar -->
-        <div id="fallbackBar"></div>
+        <!-- ✅ 永远可见的选项条 -->
+        <div id="choiceBar"></div>
       </div>
     </div>
 
@@ -367,10 +324,6 @@
     <div class="ocean"></div>
   </div>
 
-  <!-- ✅ 顶层字卡层 -->
-  <div id="holdsLayer"></div>
-
-  <!-- ✅ 攀登者 -->
   <div class="climber" id="climber">🧗</div>
 
   <div class="overlay" id="overlay">
@@ -393,18 +346,18 @@
    DATA (ESC-1-4 Part 2)
    ========================= */
 const WORDS = [
-  {p:"zǎo", zh:"早", en:"morning"},
-  {p:"shàng", zh:"上", en:"suffix (早上/晚上/上午)"},
-  {p:"zǎoshang", zh:"早上", en:"early morning"},
-  {p:"wǔ", zh:"午", en:"noon"},
-  {p:"shàngwǔ", zh:"上午", en:"late morning"},
-  {p:"zhōng", zh:"中", en:"middle"},
-  {p:"zhōngwǔ", zh:"中午", en:"noon time"},
-  {p:"xià", zh:"下", en:"later / down"},
-  {p:"xiàwǔ", zh:"下午", en:"afternoon"},
-  {p:"wǎn", zh:"晚", en:"evening"},
-  {p:"wǎnshang", zh:"晚上", en:"evening / night"},
-  {p:"chà", zh:"差", en:"fall short of (to)"},
+  {p:"zǎo", zh:"早"},
+  {p:"shàng", zh:"上"},
+  {p:"zǎoshang", zh:"早上"},
+  {p:"wǔ", zh:"午"},
+  {p:"shàngwǔ", zh:"上午"},
+  {p:"zhōng", zh:"中"},
+  {p:"zhōngwǔ", zh:"中午"},
+  {p:"xià", zh:"下"},
+  {p:"xiàwǔ", zh:"下午"},
+  {p:"wǎn", zh:"晚"},
+  {p:"wǎnshang", zh:"晚上"},
+  {p:"chà", zh:"差"},
 ];
 
 const CHAR_ONLY = [
@@ -426,20 +379,16 @@ const SENTENCES = [
   { p:"xiàn zài chà shí fēn bā diǎn", zh:"现在差十分八点。", tokens:["现","在","差","十","分","八","点"] },
 ];
 
-const CHAR_POOL = [
-  "现","在","早","上","午","中","下","晚","差",
-  "点","分","十","一","二","三","四","五","六","七","八","九","零"
-];
+const CHAR_POOL = ["现","在","早","上","午","中","下","晚","差","点","分","十","一","二","三","四","五","六","七","八","九","零"];
 
 /* =========================
    STATE
    ========================= */
-const holdsLayer = document.getElementById("holdsLayer");
 const climber = document.getElementById("climber");
 const promptBig = document.getElementById("promptBig");
 const hint = document.getElementById("hint");
 const progress = document.getElementById("progress");
-const fallbackBar = document.getElementById("fallbackBar");
+const choiceBar = document.getElementById("choiceBar");
 
 const scoreEl = document.getElementById("score");
 const livesEl = document.getElementById("lives");
@@ -467,7 +416,6 @@ let target=null;
 let sentence=null;
 let sIndex=0;
 
-let holds=[];   // [{el,isCorrect,text}]
 let stage=0;
 const STAGES=10;
 
@@ -491,23 +439,12 @@ function showOverlay(title, message){
 }
 function hideOverlay(){ overlay.style.display="none"; }
 
-function removeHolds(){
-  for(const h of holds){ h.el.remove(); }
-  holds=[];
-}
-
-function flash(el, cls){
-  el.classList.add(cls);
-  setTimeout(()=>el.classList.remove(cls), 550);
-}
-
 /* =========================
    CLIMBER
    ========================= */
 function placeClimber(){
-  const t = stage / STAGES; // 0->1
-  const topY = 18;
-  const bottomY = 76;
+  const t = stage / STAGES;
+  const topY = 18, bottomY = 76;
   const y = bottomY - (bottomY-topY)*t;
   const x = 44 - 8*Math.sin(t*Math.PI);
   climber.style.top = y + "vh";
@@ -518,7 +455,7 @@ function climbUp(){
   placeClimber();
   if(stage >= STAGES){
     running=false;
-    showOverlay("通关！", "你爬到顶了！点“继续”会自动重开。");
+    showOverlay("通关！", "你爬到顶了！点“继续”重开。");
   }
 }
 function slipDown(){
@@ -538,46 +475,7 @@ function slipDown(){
 }
 
 /* =========================
-   HOLDS (关键：固定到顶层 holdsLayer)
-   ========================= */
-function createHold(xVW, yVH, text, isCorrect){
-  const el=document.createElement("div");
-  el.className="hold";
-  el.style.left = xVW + "vw";
-  el.style.top = yVH + "vh";
-  el.innerHTML = `<div class="txt">${text}</div>`;
-
-  el.addEventListener("pointerdown",(e)=>{
-    e.preventDefault();
-    if(!running || paused) return;
-    onChoose(el, isCorrect, text);
-  },{passive:false});
-
-  holdsLayer.appendChild(el);
-  holds.push({el, isCorrect, text});
-}
-
-/* =========================
-   FALLBACK BAR
-   ========================= */
-function setFallbackChoices(choices, correctText){
-  fallbackBar.innerHTML="";
-  fallbackBar.style.display="flex";
-  choices.forEach(t=>{
-    const b=document.createElement("button");
-    b.className="choice";
-    b.textContent=t;
-    b.onclick=()=>{
-      if(!running || paused) return;
-      onChoose(b, t===correctText, t);
-    };
-    fallbackBar.appendChild(b);
-  });
-}
-function hideFallback(){ fallbackBar.style.display="none"; fallbackBar.innerHTML=""; }
-
-/* =========================
-   SENTENCE PROGRESS
+   UI BUILDERS
    ========================= */
 function renderSentenceProgress(){
   progress.innerHTML="";
@@ -591,59 +489,36 @@ function renderSentenceProgress(){
   });
 }
 
+function renderChoices(choices, correctText){
+  choiceBar.innerHTML="";
+  choices.forEach(t=>{
+    const b=document.createElement("button");
+    b.className="choice";
+    b.textContent=t;
+    b.onclick=()=> {
+      if(!running || paused) return;
+      const ok = (t===correctText);
+      if(ok){ b.classList.add("good"); setTimeout(()=>b.classList.remove("good"), 350); }
+      else{ b.classList.add("bad"); setTimeout(()=>b.classList.remove("bad"), 350); }
+      onChoose(ok);
+    };
+    choiceBar.appendChild(b);
+  });
+}
+
 /* =========================
-   ROUND BUILDERS
+   GAME LOGIC
    ========================= */
-function buildHoldsWordOrChar(correctZh){
-  removeHolds();
-  hideFallback();
-
-  const ys = [66, 54, 42, 30];
-  const xs = [28, 36, 24, 34];
-
-  const pool = (mode==="word") ? WORDS.map(x=>x.zh) : CHAR_ONLY.map(x=>x.zh);
-  const distract = shuffle(pool.filter(z=>z!==correctZh)).slice(0,3);
-  const choices = shuffle([correctZh, ...distr]);
-
-  for(let i=0;i<4;i++){
-    createHold(xs[i], ys[i], choices[i], choices[i]===correctZh);
-  }
-
-  // 备份条：如果字卡层异常，仍能点
-  setTimeout(()=>{
-    if(holds.length===0){
-      setFallbackChoices(choices, correctZh);
-    }
-  }, 60);
-}
-
-function buildHoldsSentence(needChar){
-  removeHolds();
-  hideFallback();
-
-  const ys = [66, 56, 46, 36, 26];
-  const xs = [26, 36, 22, 34, 28];
-
-  const distract = shuffle(CHAR_POOL.filter(c=>c!==needChar)).slice(0,4);
-  const choices = shuffle([needChar, ...distr]);
-
-  for(let i=0;i<5;i++){
-    createHold(xs[i], ys[i], choices[i], choices[i]===needChar);
-  }
-
-  setTimeout(()=>{
-    if(holds.length===0){
-      setFallbackChoices(choices, needChar);
-    }
-  }, 60);
-}
-
 function nextWordTarget(){
   target = pick(WORDS);
   promptBig.textContent = target.p;
   hint.textContent = "点击正确的词语。";
   progress.style.display="none";
-  buildHoldsWordOrChar(target.zh);
+
+  const pool = WORDS.map(x=>x.zh);
+  const distract = shuffle(pool.filter(z=>z!==target.zh)).slice(0,3);
+  const choices = shuffle([target.zh, ...distr]);
+  renderChoices(choices, target.zh);
 }
 
 function nextCharTarget(){
@@ -651,7 +526,11 @@ function nextCharTarget(){
   promptBig.textContent = target.p;
   hint.textContent = "点击正确的单字。";
   progress.style.display="none";
-  buildHoldsWordOrChar(target.zh);
+
+  const pool = CHAR_ONLY.map(x=>x.zh);
+  const distract = shuffle(pool.filter(z=>z!==target.zh)).slice(0,3);
+  const choices = shuffle([target.zh, ...distr]);
+  renderChoices(choices, target.zh);
 }
 
 function nextSentence(){
@@ -661,7 +540,11 @@ function nextSentence(){
   hint.textContent = "按顺序点击句子里的下一个字。";
   progress.style.display="flex";
   renderSentenceProgress();
-  buildHoldsSentence(sentence.tokens[sIndex]);
+
+  const need = sentence.tokens[sIndex];
+  const distract = shuffle(CHAR_POOL.filter(c=>c!==need)).slice(0,4);
+  const choices = shuffle([need, ...distr]);
+  renderChoices(choices, need);
 }
 
 function newRound(){
@@ -670,39 +553,33 @@ function newRound(){
   else nextSentence();
 }
 
-/* =========================
-   ANSWER HANDLER
-   ========================= */
-function onChoose(el, isCorrect, text){
-  // el 可能是 hold div，也可能是 fallback button
+function onChoose(isCorrect){
   if(isCorrect){
-    // 只有真正 hold 才有 classList good/bad
-    if(el.classList) flash(el, "good");
-    score += 1;
-    updateHUD();
+    score += 1; updateHUD();
     climbUp();
 
     if(mode==="sentence"){
       sIndex += 1;
       if(sIndex >= sentence.tokens.length){
-        score += 2;
-        updateHUD();
+        score += 2; updateHUD();
         nextSentence();
       }else{
         renderSentenceProgress();
-        buildHoldsSentence(sentence.tokens[sIndex]);
+        const need = sentence.tokens[sIndex];
+        const distract = shuffle(CHAR_POOL.filter(c=>c!==need)).slice(0,4);
+        const choices = shuffle([need, ...distr]);
+        renderChoices(choices, need);
       }
     }else{
       newRound();
     }
   }else{
-    if(el.classList) flash(el, "bad");
     slipDown();
   }
 }
 
 /* =========================
-   MODE + CONTROLS
+   CONTROLS
    ========================= */
 function setMode(m){
   mode=m;
@@ -713,12 +590,8 @@ function setMode(m){
 }
 
 function resetGame(){
-  running=true;
-  paused=false;
-  score=0;
-  lives=3;
-  stage=0;
-  sIndex=0;
+  running=true; paused=false;
+  score=0; lives=3; stage=0; sIndex=0;
   updateHUD();
   placeClimber();
   hideOverlay();
@@ -729,30 +602,20 @@ function togglePause(){
   if(!running) return;
   paused = !paused;
   btnPause.textContent = paused ? "继续" : "暂停";
-  if(paused){
-    showOverlay("已暂停", "点“继续”回到游戏。");
-  }else{
-    hideOverlay();
-  }
+  if(paused) showOverlay("已暂停", "点“继续”回到游戏。");
+  else hideOverlay();
 }
 
-/* Buttons */
 btnGo.addEventListener("click",()=>{
-  if(!running || lives<=0 || stage>=STAGES){
-    resetGame();
-    return;
-  }
-  paused=false;
-  hideOverlay();
-  btnPause.textContent="暂停";
+  if(!running || lives<=0 || stage>=STAGES){ resetGame(); return; }
+  paused=false; hideOverlay(); btnPause.textContent="暂停";
 });
-
 btnPause.addEventListener("click",()=> togglePause());
 btnReset.addEventListener("click",()=> resetGame());
 
-btnModeWord.addEventListener("click",()=>{ setMode("word"); });
-btnModeChar.addEventListener("click",()=>{ setMode("char"); });
-btnModeSentence.addEventListener("click",()=>{ setMode("sentence"); });
+btnModeWord.addEventListener("click",()=> setMode("word"));
+btnModeChar.addEventListener("click",()=> setMode("char"));
+btnModeSentence.addEventListener("click",()=> setMode("sentence"));
 
 window.addEventListener("keydown",(e)=>{
   if(e.code==="Space"){ e.preventDefault(); togglePause(); }
@@ -763,20 +626,15 @@ window.addEventListener("keydown",(e)=>{
 });
 
 /* =========================
-   INIT (自动开始)
+   INIT
    ========================= */
 placeClimber();
 updateHUD();
-
 running = true;
 paused = false;
 
 // 默认模式：你想默认词语就改成 "word"
 setMode("sentence");
-
-// 再补两次确保生成（不同浏览器渲染节奏不同）
-setTimeout(()=>{ if(holds.length===0) newRound(); }, 120);
-setTimeout(()=>{ if(holds.length===0) newRound(); }, 450);
 </script>
 </body>
 </html>
