@@ -1,188 +1,107 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>ESC-1 Games Hub</title>
-  <style>
-    :root{
-      --bg1:#060b16;
-      --bg2:#071a2e;
-      --border: rgba(255,255,255,.14);
-      --text:#eaf2ff;
-      --muted:#b7c7e6;
-      --accent:#ffd54a;
-      --shadow: 0 18px 70px rgba(0,0,0,.45);
-    }
-    *{box-sizing:border-box;}
-    html,body{height:100%; margin:0;}
-    body{
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Noto Sans",sans-serif;
-      color: var(--text);
-      background:
-        radial-gradient(1100px 600px at 20% 0%, rgba(40,120,255,.18) 0%, transparent 55%),
-        radial-gradient(900px 500px at 85% 10%, rgba(0,220,255,.12) 0%, transparent 55%),
-        linear-gradient(180deg, var(--bg2), var(--bg1));
-      padding: 22px;
-    }
-    .wrap{max-width: 1100px; margin: 0 auto;}
-    header{
-      display:flex; align-items:flex-end; justify-content:space-between; gap:16px;
-      margin-bottom: 14px;
-    }
-    h1{ margin:0; font-size: 34px; letter-spacing:.4px; }
-    .sub{
-      margin:8px 0 0;
-      color: var(--muted);
-      font-weight: 650;
-      line-height: 1.4;
-    }
-    .hint{
-      margin:0;
-      color: rgba(255,255,255,.85);
-      font-weight: 800;
-      font-size: 13px;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 999px;
-      background: rgba(0,0,0,.18);
-      backdrop-filter: blur(10px);
-      white-space: nowrap;
-    }
-    .grid{
-      margin-top: 16px;
-      display:grid;
-      grid-template-columns: repeat( auto-fit, minmax(260px, 1fr) );
-      gap: 14px;
-    }
-    .card{
-      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.06));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow);
-      padding: 16px;
-      backdrop-filter: blur(10px);
-      min-height: 170px;
-      display:flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .topline{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-    }
-    .tag{
-      font-size: 12px;
-      font-weight: 900;
-      padding: 5px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(0,0,0,.22);
-      color: rgba(255,255,255,.9);
-    }
-    .name{
-      font-size: 18px;
-      font-weight: 1000;
-      margin: 0;
-      letter-spacing:.2px;
-    }
-    .desc{
-      margin: 0;
-      color: var(--muted);
-      font-weight: 650;
-      line-height: 1.35;
-      font-size: 14px;
-    }
-    .btnrow{ display:flex; gap:10px; flex-wrap:wrap; }
-    a.btn{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.16);
-      background: rgba(0,0,0,.22);
-      color: rgba(255,255,255,.95);
-      font-weight: 950;
-      letter-spacing:.2px;
-      transition: transform .12s ease, background .12s ease;
-    }
-    a.btn:hover{ transform: translateY(-1px); background: rgba(255,255,255,.10); }
-    a.btn.primary{
-      border-color: rgba(255,213,74,.55);
-      background: rgba(255,213,74,.18);
-    }
-    code{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-size: 12px;
-      color: rgba(255,255,255,.88);
-      background: rgba(0,0,0,.22);
-      border: 1px solid rgba(255,255,255,.12);
-      padding: 3px 7px;
-      border-radius: 10px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ESC 游戏中心</title>
+
+<style>
+body{
+  margin:0;
+  font-family: system-ui,-apple-system,sans-serif;
+  background: linear-gradient(to bottom,#0f172a,#020617);
+  color:#fff;
+}
+
+.wrapper{
+  max-width:1100px;
+  margin:60px auto;
+  padding:20px;
+}
+
+h1{
+  text-align:center;
+  font-size:42px;
+  margin-bottom:50px;
+  letter-spacing:2px;
+}
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit,minmax(280px,1fr));
+  gap:30px;
+}
+
+.card{
+  background:rgba(15,23,42,0.95);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:20px;
+  padding:30px;
+  box-shadow:0 15px 40px rgba(0,0,0,0.5);
+  transition:transform .2s;
+}
+
+.card:hover{
+  transform:translateY(-6px);
+}
+
+.card h2{
+  margin-top:0;
+  font-size:22px;
+  margin-bottom:15px;
+}
+
+.card p{
+  font-size:14px;
+  opacity:.7;
+  margin-bottom:25px;
+}
+
+.btn{
+  display:inline-block;
+  padding:12px 24px;
+  background:#ffd54a;
+  color:#000;
+  text-decoration:none;
+  font-weight:bold;
+  border-radius:10px;
+  transition:.2s;
+}
+
+.btn:hover{
+  transform:scale(1.05);
+}
+</style>
 </head>
 
 <body>
-  <div class="wrap">
-    <header>
-      <div>
-        <h1>ESC-1 Games Hub</h1>
-        <p class="sub">ESC-1 第一册小游戏入口</p>
-      </div>
-      <p class="hint">看不到更新：链接后加 ?v=1</p>
-    </header>
+<div class="wrapper">
+  <h1>🎮 ESC 游戏中心</h1>
 
-    <div class="grid">
+  <div class="grid">
 
-      <div class="card">
-        <div>
-          <div class="topline">
-            <span class="tag">Game 1</span>
-            <code>ESC_1_4_flyswatter.html</code>
-          </div>
-          <p class="name">打苍蝇 Fly Swatter</p>
-          <p class="desc">点击正确答案。适合快速识别与反应训练。</p>
-        </div>
-        <div class="btnrow">
-          <a class="btn primary" href="./ESC_1_4_flyswatter.html">▶ Play</a>
-          <a class="btn" href="./ESC_1_4_flyswatter.html?v=1">↻ No cache</a>
-        </div>
-      </div>
-
-      <div class="card">
-        <div>
-          <div class="topline">
-            <span class="tag">Game 2</span>
-            <code>ESC_1_4_bigfish.html</code>
-          </div>
-          <p class="name">大鱼吃小鱼 Big Fish</p>
-          <p class="desc">词语/单字/句子/翻译模式，吃对加分，吃错扣命。</p>
-        </div>
-        <div class="btnrow">
-          <a class="btn primary" href="./ESC_1_4_bigfish.html">▶ Play</a>
-          <a class="btn" href="./ESC_1_4_bigfish.html?v=1">↻ No cache</a>
-        </div>
-      </div>
-
-      <div class="card">
-        <div>
-          <div class="topline">
-            <span class="tag">Game 3</span>
-            <code>ESC_1_4_cliff_climb.html</code>
-          </div>
-          <p class="name">时间攀登者 Cliff Climb</p>
-          <p class="desc">点陨石选答案，答对上升，答错下滑。</p>
-        </div>
-        <div class="btnrow">
-          <a class="btn primary" href="./ESC_1_4_cliff_climb.html">▶ Play</a>
-          <a class="btn" href="./ESC_1_4_cliff_climb.html?v=1">↻ No cache</a>
-        </div>
-      </div>
-
+    <!-- Game 1 -->
+    <div class="card">
+      <h2>🪰 打苍蝇 Flyswatter</h2>
+      <p>词语 / 单字 / 句子 顺序练习</p>
+      <a class="btn" href="./ESC_1_4_flyswatter.html">▶ 开始游戏</a>
     </div>
+
+    <!-- Game 2 -->
+    <div class="card">
+      <h2>🐟 大鱼吃小鱼 Big Fish</h2>
+      <p>拼音识别 + 句子顺序 + 翻译模式</p>
+      <a class="btn" href="./ESC_1_4_bigfish.html">▶ 开始游戏</a>
+    </div>
+
+    <!-- Game 3 -->
+    <div class="card">
+      <h2>🧗 悬崖攀登 Cliff Climb</h2>
+      <p>时间词汇挑战 + 难度递增</p>
+      <a class="btn" href="./ESC_1_4_cliff_climb.html">▶ 开始游戏</a>
+    </div>
+
   </div>
+</div>
 </body>
 </html>
