@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESC-1-5 🥟 天上掉饺子 Dumpling Catcher</title>
+  <style>
+    :root{
+      --bg:#f6f7fb;
+      --ink:#1f2937;
+      --muted:#6b7280;
+      --panel:#ffffff;
+      --line:#e5e7eb;
+      --accent:#7c3aed;
+      --good:#16a34a;
+      --bad:#dc2626;
+    }
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";}
+    body{background:linear-gradient(#f8fafc,#eef2ff); color:var(--ink); display:flex; align-items:center; justify-content:center; padding:14px;}
+    .wrap{width:min(1100px,100%); display:grid; grid-template-columns: 1fr 320px; gap:14px;}
+    .card{background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.06);}
+    .stage{position:relative; overflow:hidden;}
+    canvas{display:block; width:100%; height:auto; border-radius:16px;}
+    .hud{
+      position:absolute; left:12px; top:12px;
+      display:flex; gap:10px; flex-wrap:wrap;
+      background:rgba(255,255,255,.85);
+      border:1px solid var(--line); border-radius:14px; padding:8px 10px;
+      backdrop-filter: blur(6px);
+      align-items:center;
+    }
+    .pill{display:flex; gap:8px; align-items:baseline;}
+    .pill b{font-size:14px;}
+    .pill span{font-size:13px; color:var(--muted);}
+    .controls{
+      position:absolute; right:12px; top:12px;
+      display:flex; gap:8px;
+      background:rgba(255,255,255,.85);
+      border:1px solid var(--line); border-radius:14px; padding:8px 10px;
+      backdrop-filter: blur(6px);
+    }
+    button{
+      border:1px solid var(--line); background:#fff; color:var(--ink);
+      border-radius:10px; padding:8px 10px; cursor:pointer; font-weight:600;
+    }
+    button:hover{border-color:#cbd5e1}
+    button.primary{background:var(--accent); color:#fff; border-color:transparent;}
+    button.primary:hover{filter:brightness(1.05)}
+    button:disabled{opacity:.55; cursor:not-allowed}
+    .side{
+      padding:14px;
+      display:flex; flex-direction:column; gap:12px;
+    }
+    .title{display:flex; flex-direction:column; gap:4px; padding:14px;}
+    .title h1{margin:0; font-size:18px;}
+    .title p{margin:0; color:var(--muted); font-size:13px; line-height:1.35;}
+    .prompt{
+      padding:12px 14px;
+      border:1px dashed #c7d2fe;
+      background:#eef2ff;
+      border-radius:14px;
+      display:flex; flex-direction:column; gap:8px;
+    }
+    .prompt .label{font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:.08em;}
+    .prompt .big{font-size:26px; font-weight:800;}
+    .prompt .small{font-size:14px; color:var(--muted);}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap}
+    .toggle{display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted)}
+    .toggle input{transform:scale(1.1)}
+    .help{
+      padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:#fff;
+      color:var(--muted); font-size:13px; line-height:1.4;
+    }
+    .help b{color:var(--ink)}
+    .list{padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:#fff;}
+    .list h3{margin:0 0 8px 0; font-size:14px;}
+    .chips{display:flex; gap:6px; flex-wrap:wrap}
+    .chip{border:1px solid var(--line); border-radius:999px; padding:6px 8px; font-size:12px; color:var(--muted); background:#fafafa}
+    .note{font-size:12px; color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card stage">
+      <canvas id="game" width="900" height="560" aria-label="Dumpling Catcher Game"></canvas>
+
+      <div class="hud">
+        <div class="pill"><b>Score</b> <span id="score">$0</span></div>
+        <div class="pill"><b>Round</b> <span id="round">1</span></div>
+        <div class="pill"><b>Streak</b> <span id="streak">0</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="repeatBtn" disabled>🔊 Repeat</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">
+        <h1>ESC-1-5 🥟 天上掉饺子</h1>
+        <p>接对的饺子变成💵 +$100；接错变🌿（默认 -$50，可改）。右侧提示会随机显示拼音或英文。</p>
+      </div>
+
+      <div class="side">
+        <div class="prompt">
+          <div class="label">Catch this</div>
+          <div class="big" id="promptMain">—</div>
+          <div class="small" id="promptSub">Press Start</div>
+          <div class="row">
+            <div class="toggle"><input id="audioToggle" type="checkbox" checked /> <label for="audioToggle">Auto audio</label></div>
+            <div class="toggle"><input id="pinyinOnly" type="checkbox" /> <label for="pinyinOnly">Pinyin only</label></div>
+            <div class="toggle"><input id="englishOnly" type="checkbox" /> <label for="englishOnly">English only</label></div>
+          </div>
+          <div class="note">提示显示规则：默认随机（拼音/英文）。勾选 “Pinyin only / English only” 可固定。</div>
+        </div>
+
+        <div class="help">
+          <b>Controls:</b> ← → 或 A / D 移动；Space 暂停/继续。<br/>
+          <b>Goal:</b> 按提示接到正确饺子。每接对一次进入下一轮。
+        </div>
+
+        <div class="list">
+          <h3>Word List (WL1)</h3>
+          <div class="chips" id="chips"></div>
+        </div>
+
+        <div class="help">
+          想换成你自己的词库：在代码里找 <b>VOCAB</b> 数组，照格式加/删即可。
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // =========================
+  // 1) Vocabulary (edit here)
+  // =========================
+  const VOCAB = [
+    { hanzi:"好",   pinyin:"hǎo",       en:"good / hi (polite)", speak:"好" },
+    { hanzi:"你好", pinyin:"nǐ hǎo",    en:"hello",             speak:"你好" },
+    { hanzi:"姓",   pinyin:"xìng",      en:"last name",         speak:"姓" },
+    { hanzi:"马",   pinyin:"mǎ",        en:"Ma (surname)",      speak:"马" },
+    { hanzi:"叫",   pinyin:"jiào",      en:"to be called",      speak:"叫" },
+    { hanzi:"什么", pinyin:"shénme",    en:"what",              speak:"什么" },
+    { hanzi:"名",   pinyin:"míng",      en:"given name",        speak:"名" },
+    { hanzi:"字",   pinyin:"zì",        en:"character / name",  speak:"字" },
+    { hanzi:"王",   pinyin:"wáng",      en:"Wang (surname)",    speak:"王" },
+    { hanzi:"再",   pinyin:"zài",       en:"again",             speak:"再" },
+    { hanzi:"见",   pinyin:"jiàn",      en:"see / meet",        speak:"见" },
+    { hanzi:"再见", pinyin:"zàijiàn",   en:"goodbye",           speak:"再见" },
+  ];
+
+  // =========================
+  // 2) Canvas setup
+  // =========================
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  // UI
+  const scoreEl = document.getElementById("score");
+  const roundEl = document.getElementById("round");
+  const streakEl = document.getElementById("streak");
+  const promptMainEl = document.getElementById("promptMain");
+  const promptSubEl = document.getElementById("promptSub");
+  const startBtn = document.getElementById("startBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const repeatBtn = document.getElementById("repeatBtn");
+  const audioToggle = document.getElementById("audioToggle");
+  const pinyinOnly = document.getElementById("pinyinOnly");
+  const englishOnly = document.getElementById("englishOnly");
+
+  // Chips
+  const chips = document.getElementById("chips");
+  VOCAB.forEach(v => {
+    const s = document.createElement("span");
+    s.className = "chip";
+    s.textContent = `${v.hanzi}  (${v.pinyin})`;
+    chips.appendChild(s);
+  });
+
+  // =========================
+  // 3) Game state
+  // =========================
+  const W = canvas.width, H = canvas.height;
+
+  const groundY = H - 90;
+
+  const player = {
+    x: W/2,
+    y: groundY,
+    w: 70,
+    h: 90,
+    speed: 520, // px/sec
+  };
+
+  // Plate hitbox
+  function plateRect(){
+    return { x: player.x - 55, y: player.y - 70, w: 110, h: 22 };
+  }
+
+  // Dumplings list
+  /** @type {Array<{x:number,y:number,vy:number,item:any,r:number,alive:boolean,fx?:any}>} */
+  let dumplings = [];
+
+  // Effects
+  /** @type {Array<{x:number,y:number,vy:number,text:string,ttl:number,color:string}>} */
+  let floaters = [];
+
+  let score = 0;
+  let round = 1;
+  let streak = 0;
+  let running = false;
+  let paused = false;
+
+  // Target per round
+  let target = null; // VOCAB item
+  let promptMode = "random"; // "pinyin"|"english"|"random"
+
+  // Spawn tuning
+  let spawnTimer = 0;
+  let spawnEvery = 0.95; // seconds (slow)
+  let fallBase = 110;    // px/sec (slow)
+  let fallJitter = 70;
+
+  // Keyboard
+  const keys = new Set();
+  window.addEventListener("keydown", (e) => {
+    if(["ArrowLeft","ArrowRight","a","d","A","D"," "].includes(e.key)) e.preventDefault();
+    if(e.key === " ") togglePause();
+    keys.add(e.key);
+  });
+  window.addEventListener("keyup", (e) => keys.delete(e.key));
+
+  // =========================
+  // 4) Audio (speech + sfx)
+  // =========================
+  function speakChinese(text){
+    try{
+      if(!("speechSynthesis" in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "zh-CN";
+      u.rate = 0.9;
+      u.pitch = 1.0;
+      // pick a zh voice if available
+      const voices = speechSynthesis.getVoices?.() || [];
+      const zh = voices.find(v => (v.lang||"").toLowerCase().includes("zh")) || null;
+      if(zh) u.voice = zh;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }catch(_){}
+  }
+
+  // Tiny beep/buzz using WebAudio
+  let audioCtx = null;
+  function beep(type="good"){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if(type === "good"){
+        o.type="sine"; o.frequency.setValueAtTime(660, now);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.18, now+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now+0.18);
+        o.start(now); o.stop(now+0.2);
+      }else{
+        o.type="square"; o.frequency.setValueAtTime(180, now);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.14, now+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now+0.25);
+        o.start(now); o.stop(now+0.28);
+      }
+    }catch(_){}
+  }
+
+  // =========================
+  // 5) Round / prompt logic
+  // =========================
+  function pickTarget(){
+    target = VOCAB[(round-1) % VOCAB.length]; // cycle
+    roundEl.textContent = String(round);
+
+    // determine prompt mode
+    if(pinyinOnly.checked){
+      promptMode = "pinyin";
+      englishOnly.checked = false;
+    }else if(englishOnly.checked){
+      promptMode = "english";
+      pinyinOnly.checked = false;
+    }else{
+      promptMode = "random";
+    }
+
+    let main = "";
+    let sub = "";
+    if(promptMode === "pinyin"){
+      main = target.pinyin;
+      sub = "Catch the matching 汉字/词";
+    }else if(promptMode === "english"){
+      main = target.en;
+      sub = "Catch the matching 汉字/词";
+    }else{
+      const r = Math.random() < 0.5 ? "pinyin" : "english";
+      main = (r === "pinyin") ? target.pinyin : target.en;
+      sub = (r === "pinyin") ? "Pinyin prompt" : "English prompt";
+    }
+
+    promptMainEl.textContent = main;
+    promptSubEl.textContent = sub;
+
+    if(audioToggle.checked){
+      speakChinese(target.speak || target.hanzi);
+    }
+  }
+
+  // =========================
+  // 6) Spawning & collision
+  // =========================
+  function spawnDumpling(){
+    // choose a random item; bias to include target frequently
+    const useTarget = target && Math.random() < 0.38;
+    const item = useTarget ? target : VOCAB[Math.floor(Math.random()*VOCAB.length)];
+
+    const x = 60 + Math.random()*(W-120);
+    const vy = fallBase + Math.random()*fallJitter;
+    dumplings.push({
+      x, y: -40, vy,
+      item,
+      r: 34,
+      alive: true
+    });
+  }
+
+  function rectsOverlap(a,b){
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
+  function dumplingRect(d){
+    return { x: d.x - d.r, y: d.y - d.r, w: d.r*2, h: d.r*2 };
+  }
+
+  function onCatch(d){
+    const correct = target && (d.item.hanzi === target.hanzi);
+    if(correct){
+      score += 100;
+      streak += 1;
+      floaters.push({x:d.x, y:d.y, vy:-40, text:"+$100 💵", ttl:0.9, color:"var(--good)"});
+      beep("good");
+      // next round
+      round += 1;
+      pickTarget();
+    }else{
+      // wrong -> grass
+      score -= 50; // change to 0 if you prefer no penalty
+      streak = 0;
+      floaters.push({x:d.x, y:d.y, vy:-20, text:"🌿 -$50", ttl:1.0, color:"var(--bad)"});
+      beep("bad");
+    }
+    scoreEl.textContent = `$${score}`;
+    streakEl.textContent = String(streak);
+    d.alive = false;
+  }
+
+  // =========================
+  // 7) Drawing
+  // =========================
+  function drawBackground(){
+    // sky gradient
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,"#e0f2fe");
+    g.addColorStop(0.55,"#f5f3ff");
+    g.addColorStop(1,"#fff7ed");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    // clouds
+    ctx.globalAlpha = 0.7;
+    drawCloud(140,90,1.1);
+    drawCloud(360,70,0.9);
+    drawCloud(720,110,1.2);
+    ctx.globalAlpha = 1;
+
+    // ground
+    ctx.fillStyle = "#d1fae5";
+    ctx.fillRect(0, groundY+28, W, H - (groundY+28));
+
+    // simple fence line
+    ctx.strokeStyle = "rgba(31,41,55,.12)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY+28);
+    ctx.lineTo(W, groundY+28);
+    ctx.stroke();
+  }
+
+  function drawCloud(x,y,s){
+    ctx.fillStyle = "rgba(255,255,255,.9)";
+    ctx.beginPath();
+    ctx.ellipse(x, y, 42*s, 26*s, 0, 0, Math.PI*2);
+    ctx.ellipse(x+36*s, y+6*s, 38*s, 24*s, 0, 0, Math.PI*2);
+    ctx.ellipse(x-34*s, y+8*s, 34*s, 22*s, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawPlayer(){
+    // cartoon body
+    const px = player.x, py = player.y;
+
+    // shadow
+    ctx.fillStyle = "rgba(0,0,0,.08)";
+    ctx.beginPath();
+    ctx.ellipse(px, py+44, 46, 12, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // legs
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 8;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(px-16, py+28);
+    ctx.lineTo(px-22, py+42);
+    ctx.moveTo(px+16, py+28);
+    ctx.lineTo(px+22, py+42);
+    ctx.stroke();
+
+    // torso
+    ctx.fillStyle = "#60a5fa";
+    roundRect(px-28, py-8, 56, 52, 14, true);
+
+    // head
+    ctx.fillStyle = "#fcd34d";
+    ctx.beginPath();
+    ctx.ellipse(px, py-32, 20, 22, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // face
+    ctx.fillStyle = "#111827";
+    ctx.beginPath();
+    ctx.ellipse(px-7, py-36, 2.5, 3, 0, 0, Math.PI*2);
+    ctx.ellipse(px+7, py-36, 2.5, 3, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#111827";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.arc(px, py-28, 7, 0, Math.PI);
+    ctx.stroke();
+
+    // arms up
+    ctx.strokeStyle = "#334155";
+    ctx.lineWidth = 7;
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(px-22, py-2);
+    ctx.lineTo(px-40, py-42);
+    ctx.moveTo(px+22, py-2);
+    ctx.lineTo(px+40, py-42);
+    ctx.stroke();
+
+    // plate
+    const pr = plateRect();
+    ctx.fillStyle = "#f8fafc";
+    roundRect(pr.x, pr.y, pr.w, pr.h, 12, true);
+    ctx.strokeStyle = "rgba(31,41,55,.18)";
+    ctx.lineWidth = 2;
+    roundRect(pr.x, pr.y, pr.w, pr.h, 12, false);
+
+    // plate rim
+    ctx.strokeStyle="rgba(124,58,237,.45)";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.roundRect(pr.x+8, pr.y+5, pr.w-16, pr.h-10, 10);
+    ctx.stroke();
+  }
+
+  function drawDumpling(d){
+    // dumpling body
+    ctx.fillStyle = "#fde68a";
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.r*1.15, d.r*0.85, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // dumpling highlight
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.beginPath();
+    ctx.ellipse(d.x - 10, d.y - 8, d.r*0.55, d.r*0.35, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    // dumpling edge lines
+    ctx.strokeStyle = "rgba(31,41,55,.18)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.r*1.15, d.r*0.85, 0, 0, Math.PI*2);
+    ctx.stroke();
+
+    // text inside
+    ctx.fillStyle = "#111827";
+    ctx.font = "bold 22px system-ui, -apple-system, Segoe UI, Roboto";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(d.item.hanzi, d.x, d.y+1);
+  }
+
+  function roundRect(x,y,w,h,r,fill){
+    if(ctx.roundRect){
+      ctx.beginPath();
+      ctx.roundRect(x,y,w,h,r);
+      fill ? ctx.fill() : ctx.stroke();
+    }else{
+      // fallback
+      ctx.beginPath();
+      ctx.moveTo(x+r,y);
+      ctx.lineTo(x+w-r,y);
+      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r);
+      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+      fill ? ctx.fill() : ctx.stroke();
+    }
+  }
+
+  function drawFloaters(dt){
+    for(const f of floaters){
+      f.y += f.vy * dt;
+      f.ttl -= dt;
+      ctx.globalAlpha = Math.max(0, f.ttl);
+      ctx.fillStyle = f.color;
+      ctx.font = "bold 20px system-ui, -apple-system, Segoe UI, Roboto";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.globalAlpha = 1;
+    }
+    floaters = floaters.filter(f => f.ttl > 0);
+  }
+
+  // =========================
+  // 8) Loop
+  // =========================
+  let last = 0;
+  function loop(ts){
+    if(!running){ drawSplash(); requestAnimationFrame(loop); return; }
+    if(paused){ drawPaused(); requestAnimationFrame(loop); return; }
+
+    const t = ts/1000;
+    const dt = Math.min(0.033, t - last);
+    last = t;
+
+    update(dt);
+    render(dt);
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    // move player
+    const left = keys.has("ArrowLeft") || keys.has("a") || keys.has("A");
+    const right = keys.has("ArrowRight") || keys.has("d") || keys.has("D");
+    if(left) player.x -= player.speed * dt;
+    if(right) player.x += player.speed * dt;
+    player.x = Math.max(55, Math.min(W-55, player.x));
+
+    // spawn
+    spawnTimer += dt;
+    if(spawnTimer >= spawnEvery){
+      spawnTimer = 0;
+      // spawn 1–2 dumplings sometimes
+      spawnDumpling();
+      if(Math.random() < 0.22) spawnDumpling();
+    }
+
+    // fall
+    for(const d of dumplings){
+      d.y += d.vy * dt;
+      if(d.y > H + 80) d.alive = false;
+    }
+
+    // collision with plate
+    const pr = plateRect();
+    for(const d of dumplings){
+      if(!d.alive) continue;
+      if(rectsOverlap(pr, dumplingRect(d))){
+        onCatch(d);
+      }
+    }
+
+    dumplings = dumplings.filter(d => d.alive);
+  }
+
+  function render(dt){
+    drawBackground();
+
+    // dumplings
+    for(const d of dumplings) drawDumpling(d);
+
+    // player
+    drawPlayer();
+
+    // floaters
+    drawFloaters(dt);
+
+    // small prompt reminder on canvas
+    if(target){
+      ctx.fillStyle = "rgba(255,255,255,.75)";
+      ctx.strokeStyle = "rgba(229,231,235,.9)";
+      ctx.lineWidth = 1;
+      roundRect(14, H-64, 330, 46, 12, true);
+      roundRect(14, H-64, 330, 46, 12, false);
+
+      ctx.fillStyle = "#111827";
+      ctx.font = "600 14px system-ui, -apple-system, Segoe UI, Roboto";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Target: " + target.hanzi + "  (" + target.pinyin + ")", 26, H-41);
+    }
+  }
+
+  function drawSplash(){
+    drawBackground();
+    drawPlayer();
+    ctx.fillStyle="rgba(255,255,255,.82)";
+    ctx.strokeStyle="rgba(229,231,235,.95)";
+    ctx.lineWidth=1;
+    roundRect(W/2-240, H/2-90, 480, 180, 18, true);
+    roundRect(W/2-240, H/2-90, 480, 180, 18, false);
+
+    ctx.fillStyle="#111827";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font="800 26px system-ui, -apple-system, Segoe UI, Roboto";
+    ctx.fillText("🥟 天上掉饺子", W/2, H/2-35);
+
+    ctx.font="600 14px system-ui, -apple-system, Segoe UI, Roboto";
+    ctx.fillStyle="#6b7280";
+    ctx.fillText("Press Start • ←/→ or A/D to move • Space to pause", W/2, H/2+10);
+    ctx.fillText("Catch the dumpling that matches the prompt (pinyin/English).", W/2, H/2+34);
+  }
+
+  function drawPaused(){
+    render(0);
+    ctx.fillStyle="rgba(17,24,39,.35)";
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font="800 32px system-ui";
+    ctx.fillText("Paused", W/2, H/2);
+    ctx.font="600 14px system-ui";
+    ctx.fillText("Press Space to resume", W/2, H/2+30);
+  }
+
+  // =========================
+  // 9) Controls
+  // =========================
+  function start(){
+    score = 0;
+    round = 1;
+    streak = 0;
+    dumplings = [];
+    floaters = [];
+    scoreEl.textContent = "$0";
+    roundEl.textContent = "1";
+    streakEl.textContent = "0";
+
+    running = true;
+    paused = false;
+    last = performance.now()/1000;
+    spawnTimer = 0;
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    repeatBtn.disabled = false;
+    pauseBtn.textContent = "Pause";
+
+    pickTarget();
+  }
+
+  function togglePause(){
+    if(!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Resume" : "Pause";
+  }
+
+  startBtn.addEventListener("click", start);
+  pauseBtn.addEventListener("click", togglePause);
+  repeatBtn.addEventListener("click", () => {
+    if(target) speakChinese(target.speak || target.hanzi);
+  });
+
+  pinyinOnly.addEventListener("change", () => {
+    if(pinyinOnly.checked) englishOnly.checked = false;
+    if(target) pickTarget();
+  });
+  englishOnly.addEventListener("change", () => {
+    if(englishOnly.checked) pinyinOnly.checked = false;
+    if(target) pickTarget();
+  });
+
+  // Some browsers load voices async
+  if("speechSynthesis" in window){
+    window.speechSynthesis.onvoiceschanged = () => {};
+  }
+
+  // Start loop
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
