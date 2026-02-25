@@ -1,0 +1,681 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESC-1-5 (WL2) 🥟 天上掉饺子 Dumpling Catcher</title>
+  <style>
+    :root{
+      --ink:#f8fafc;
+      --muted:#cbd5e1;
+      --panel:rgba(15,23,42,.72);
+      --line:rgba(148,163,184,.25);
+      --accent:#34d399; /* green accent for WL2 */
+      --good:#22c55e;
+      --bad:#fb7185;
+
+      /* WL2 distinct background (teal/green night) */
+      --bg1:#02110a;
+      --bg2:#064e3b;
+      --bg3:#0b2a22;
+    }
+
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans,Helvetica,Arial;}
+    body{
+      background:radial-gradient(1200px 600px at 20% 10%, var(--bg2) 0%, var(--bg1) 45%, var(--bg3) 100%);
+      color:var(--ink);
+      display:flex; align-items:center; justify-content:center;
+      padding:12px;
+    }
+    .wrap{
+      width:min(1250px,100%);
+      display:grid;
+      grid-template-columns: 1fr 360px;
+      gap:14px;
+    }
+    .card{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:rgba(2,6,23,.28);
+      box-shadow:0 18px 55px rgba(0,0,0,.45);
+      overflow:hidden;
+    }
+    .stage{position:relative;}
+    canvas{display:block; width:100%; height:auto;}
+
+    .hud{
+      position:absolute; left:14px; top:14px;
+      display:flex; gap:12px; flex-wrap:wrap;
+      background:rgba(2,6,23,.55);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:10px 12px;
+      backdrop-filter: blur(8px);
+      align-items:center;
+    }
+    .pill{display:flex; gap:10px; align-items:baseline;}
+    .pill b{font-size:15px; letter-spacing:.02em;}
+    .pill span{font-size:15px; color:var(--muted); font-weight:700;}
+
+    .controls{
+      position:absolute; right:14px; top:14px;
+      display:flex; gap:10px;
+      background:rgba(2,6,23,.55);
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:10px 12px;
+      backdrop-filter: blur(8px);
+    }
+    button{
+      border:1px solid rgba(148,163,184,.35);
+      background:rgba(255,255,255,.06);
+      color:var(--ink);
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:800;
+      font-size:14px;
+    }
+    button:hover{border-color:rgba(255,255,255,.35)}
+    button.primary{
+      background:linear-gradient(90deg, rgba(52,211,153,.92), rgba(34,197,94,.70));
+      border-color:transparent;
+      color:#06261a;
+    }
+    button.primary:hover{filter:brightness(1.05)}
+    button:disabled{opacity:.55; cursor:not-allowed}
+
+    .side{padding:16px; display:flex; flex-direction:column; gap:12px;}
+    .title{padding:14px 14px 0 14px;}
+    .title h1{
+      margin:0;
+      font-size:18px;
+      line-height:1.25;
+      white-space:normal;
+      word-break:break-word;
+    }
+    .title p{
+      margin:8px 0 0 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.45;
+    }
+    .prompt{
+      padding:14px;
+      border:1px solid rgba(52,211,153,.35);
+      background:rgba(52,211,153,.10);
+      border-radius:16px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .prompt .label{
+      font-size:12px; color:var(--muted);
+      text-transform:uppercase; letter-spacing:.1em;
+    }
+    .prompt .big{font-size:30px; font-weight:900; letter-spacing:.01em;}
+    .prompt .small{font-size:14px; color:var(--muted);}
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+    .toggle{display:flex; gap:8px; align-items:center; font-size:13px; color:var(--muted); font-weight:700}
+    .toggle input{transform:scale(1.15)}
+    .help{
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(2,6,23,.30);
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.5;
+    }
+    .help b{color:var(--ink)}
+    .list{
+      padding:14px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:rgba(2,6,23,.30);
+    }
+    .list h3{margin:0 0 10px 0; font-size:14px; color:var(--ink);}
+    .chips{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{
+      border:1px solid rgba(148,163,184,.28);
+      border-radius:999px;
+      padding:8px 10px;
+      font-size:12px;
+      color:var(--muted);
+      background:rgba(255,255,255,.04);
+      font-weight:800;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card stage">
+      <canvas id="game" width="980" height="600"></canvas>
+
+      <div class="hud">
+        <div class="pill"><b>Score</b> <span id="score">$0</span></div>
+        <div class="pill"><b>Round</b> <span id="round">1</span></div>
+        <div class="pill"><b>Streak</b> <span id="streak">0</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="startBtn" class="primary">Start</button>
+        <button id="pauseBtn" disabled>Pause</button>
+        <button id="repeatBtn" disabled>🔊 Repeat</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="title">
+        <h1>ESC-1-5 (WL2) 🥟 天上掉饺子 Dumpling Catcher</h1>
+        <p>按右侧提示接正确饺子。接对 +$100 💵，接错 🌿 -$50。</p>
+      </div>
+
+      <div class="side">
+        <div class="prompt">
+          <div class="label">Catch This</div>
+          <div class="big" id="promptMain">—</div>
+          <div class="small" id="promptSub">Press Start</div>
+          <div class="row">
+            <div class="toggle"><input id="audioToggle" type="checkbox" checked /> <label for="audioToggle">Auto audio</label></div>
+            <div class="toggle"><input id="pinyinOnly" type="checkbox" /> <label for="pinyinOnly">Pinyin only</label></div>
+            <div class="toggle"><input id="englishOnly" type="checkbox" /> <label for="englishOnly">English only</label></div>
+          </div>
+        </div>
+
+        <div class="help">
+          <b>Controls:</b> ← → 或 A / D 移动；Space 暂停/继续。
+        </div>
+
+        <div class="list">
+          <h3>Word List (WL2)</h3>
+          <div class="chips" id="chips"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // =========================
+  // Vocabulary (WL2)
+  // =========================
+  const VOCAB = [
+    { hanzi:"他",   pinyin:"tā",        en:"he / him",          speak:"他" },
+    { hanzi:"谁",   pinyin:"shéi",      en:"who",               speak:"谁" },
+    { hanzi:"今年", pinyin:"jīn nián",  en:"this year",         speak:"今年" },
+    { hanzi:"岁",   pinyin:"suì",       en:"year (of age)",     speak:"岁" },
+    { hanzi:"她",   pinyin:"tā",        en:"she / her",         speak:"她" },
+    { hanzi:"也",   pinyin:"yě",        en:"also",              speak:"也" },
+    { hanzi:"多",   pinyin:"duō",       en:"many / much",       speak:"多" },
+    { hanzi:"大",   pinyin:"dà",        en:"old (of age)",      speak:"大" },
+    { hanzi:"很",   pinyin:"hěn",       en:"very",              speak:"很" },
+    { hanzi:"是谁", pinyin:"shì shéi",  en:"who is (it)?",      speak:"是谁" },
+    { hanzi:"几岁", pinyin:"jǐ suì",    en:"how old (under 10)",speak:"几岁" },
+    { hanzi:"多大", pinyin:"duō dà",    en:"how old",           speak:"多大" },
+    { hanzi:"很多", pinyin:"hěn duō",   en:"a lot of",          speak:"很多" },
+    { hanzi:"朋友", pinyin:"péngyou",   en:"friend",            speak:"朋友" },
+    { hanzi:"我的", pinyin:"wǒ de",     en:"my",                speak:"我的" },
+  ];
+
+  // UI chips
+  const chips = document.getElementById("chips");
+  VOCAB.forEach(v => {
+    const s = document.createElement("span");
+    s.className = "chip";
+    s.textContent = `${v.hanzi} (${v.pinyin})`;
+    chips.appendChild(s);
+  });
+
+  // Canvas
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+
+  // UI
+  const scoreEl = document.getElementById("score");
+  const roundEl = document.getElementById("round");
+  const streakEl = document.getElementById("streak");
+  const promptMainEl = document.getElementById("promptMain");
+  const promptSubEl = document.getElementById("promptSub");
+  const startBtn = document.getElementById("startBtn");
+  const pauseBtn = document.getElementById("pauseBtn");
+  const repeatBtn = document.getElementById("repeatBtn");
+  const audioToggle = document.getElementById("audioToggle");
+  const pinyinOnly = document.getElementById("pinyinOnly");
+  const englishOnly = document.getElementById("englishOnly");
+
+  // Game state
+  const groundY = H - 96;
+
+  const player = {
+    x: W/2, y: groundY,
+    speed: 520,
+  };
+
+  function plateRect(){
+    return { x: player.x - 86, y: player.y - 86, w: 172, h: 30 };
+  }
+
+  let dumplings = [];
+  let floaters = [];
+
+  let score = 0;
+  let round = 1;
+  let streak = 0;
+  let running = false;
+  let paused = false;
+
+  let spawnTimer = 0;
+  let spawnEvery = 1.35;
+  let fallBase = 75;
+  let fallJitter = 45;
+
+  let target = null;
+
+  const keys = new Set();
+  window.addEventListener("keydown", (e) => {
+    if(["ArrowLeft","ArrowRight","a","d","A","D"," "].includes(e.key)) e.preventDefault();
+    if(e.key === " ") togglePause();
+    keys.add(e.key);
+  });
+  window.addEventListener("keyup", (e) => keys.delete(e.key));
+
+  function speakChinese(text){
+    try{
+      if(!("speechSynthesis" in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.lang = "zh-CN";
+      u.rate = 0.9;
+      const voices = speechSynthesis.getVoices?.() || [];
+      const zh = voices.find(v => (v.lang||"").toLowerCase().includes("zh")) || null;
+      if(zh) u.voice = zh;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    }catch(_){}
+  }
+
+  let audioCtx = null;
+  function beep(type="good"){
+    try{
+      audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+      const o = audioCtx.createOscillator();
+      const g = audioCtx.createGain();
+      o.connect(g); g.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+      if(type === "good"){
+        o.type="sine"; o.frequency.setValueAtTime(740, now);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.22, now+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now+0.18);
+        o.start(now); o.stop(now+0.2);
+      }else{
+        o.type="square"; o.frequency.setValueAtTime(160, now);
+        g.gain.setValueAtTime(0.0001, now);
+        g.gain.exponentialRampToValueAtTime(0.18, now+0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now+0.28);
+        o.start(now); o.stop(now+0.3);
+      }
+    }catch(_){}
+  }
+
+  function pickTarget(){
+    target = VOCAB[(round-1) % VOCAB.length];
+    roundEl.textContent = String(round);
+
+    let main = "";
+    if(pinyinOnly.checked){
+      englishOnly.checked = false;
+      main = target.pinyin;
+    }else if(englishOnly.checked){
+      pinyinOnly.checked = false;
+      main = target.en;
+    }else{
+      main = (Math.random() < 0.5) ? target.pinyin : target.en;
+    }
+    promptMainEl.textContent = main;
+    promptSubEl.textContent = "Catch the matching 汉字/词";
+
+    if(audioToggle.checked){
+      speakChinese(target.speak || target.hanzi);
+    }
+  }
+
+  function spawnDumpling(){
+    const useTarget = target && Math.random() < 0.45;
+    const item = useTarget ? target : VOCAB[Math.floor(Math.random()*VOCAB.length)];
+
+    dumplings.push({
+      x: 80 + Math.random()*(W-160),
+      y: -60,
+      vy: fallBase + Math.random()*fallJitter,
+      item,
+      r: 48,
+      alive: true
+    });
+  }
+
+  function rectsOverlap(a,b){
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+  function dumplingRect(d){
+    return { x:d.x-d.r*1.2, y:d.y-d.r, w:d.r*2.4, h:d.r*2 };
+  }
+
+  function onCatch(d){
+    const correct = target && (d.item.hanzi === target.hanzi);
+
+    if(correct){
+      score += 100;
+      streak += 1;
+      floaters.push({x:d.x, y:d.y, vy:-30, text:"+$100 💵💵", ttl:1.0, color:"#22c55e", size:30});
+      beep("good");
+      round += 1;
+      pickTarget();
+    }else{
+      score -= 50;
+      streak = 0;
+      floaters.push({x:d.x, y:d.y, vy:-18, text:"🌿🌿 -$50", ttl:1.15, color:"#fb7185", size:30});
+      beep("bad");
+    }
+
+    scoreEl.textContent = `$${score}`;
+    streakEl.textContent = String(streak);
+    d.alive = false;
+  }
+
+  function roundRect(x,y,w,h,r,fill=true,stroke=false){
+    ctx.beginPath();
+    if(ctx.roundRect){
+      ctx.roundRect(x,y,w,h,r);
+    }else{
+      ctx.moveTo(x+r,y);
+      ctx.lineTo(x+w-r,y);
+      ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+      ctx.lineTo(x+w,y+h-r);
+      ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+      ctx.lineTo(x+r,y+h);
+      ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+      ctx.lineTo(x,y+r);
+      ctx.quadraticCurveTo(x,y,x+r,y);
+    }
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+  }
+
+  function drawBackground(){
+    // WL2 sky: green-teal gradient + light dots
+    const g = ctx.createLinearGradient(0,0,0,H);
+    g.addColorStop(0,"#02120a");
+    g.addColorStop(0.55,"#064e3b");
+    g.addColorStop(1,"#0b2a22");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    // dots (like fireflies)
+    ctx.globalAlpha = 0.6;
+    for(let i=0;i<80;i++){
+      const x = (i*97)%W;
+      const y = (i*53)% (H*0.55);
+      const s = (i%3)+1;
+      ctx.fillStyle = "rgba(167,243,208,.35)";
+      ctx.fillRect(x, y, s, s);
+    }
+    ctx.globalAlpha = 1;
+
+    // ground
+    ctx.fillStyle = "#052e2a";
+    ctx.fillRect(0, groundY+34, W, H-(groundY+34));
+
+    // ground line
+    ctx.strokeStyle = "rgba(167,243,208,.25)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY+34);
+    ctx.lineTo(W, groundY+34);
+    ctx.stroke();
+  }
+
+  function drawPlayer(){
+    const px = player.x, py = player.y;
+
+    ctx.fillStyle = "rgba(0,0,0,.45)";
+    ctx.beginPath();
+    ctx.ellipse(px, py+56, 64, 16, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle = "#a7f3d0";
+    ctx.lineWidth = 10;
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(px-18, py+34); ctx.lineTo(px-26, py+54);
+    ctx.moveTo(px+18, py+34); ctx.lineTo(px+26, py+54);
+    ctx.stroke();
+
+    ctx.fillStyle = "#34d399";
+    roundRect(px-38, py-6, 76, 70, 18, true, false);
+
+    ctx.fillStyle = "#fde68a";
+    ctx.beginPath();
+    ctx.ellipse(px, py-44, 26, 28, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "#052e2a";
+    ctx.beginPath();
+    ctx.ellipse(px-9, py-48, 3.5, 4, 0, 0, Math.PI*2);
+    ctx.ellipse(px+9, py-48, 3.5, 4, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle="#052e2a";
+    ctx.lineWidth=3;
+    ctx.beginPath();
+    ctx.arc(px, py-38, 10, 0, Math.PI);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#a7f3d0";
+    ctx.lineWidth = 9;
+    ctx.lineCap="round";
+    ctx.beginPath();
+    ctx.moveTo(px-28, py-2); ctx.lineTo(px-52, py-62);
+    ctx.moveTo(px+28, py-2); ctx.lineTo(px+52, py-62);
+    ctx.stroke();
+
+    const pr = plateRect();
+    ctx.fillStyle = "rgba(248,250,252,.14)";
+    roundRect(pr.x, pr.y, pr.w, pr.h, 16, true, false);
+    ctx.strokeStyle = "rgba(52,211,153,.75)";
+    ctx.lineWidth = 3;
+    roundRect(pr.x, pr.y, pr.w, pr.h, 16, false, true);
+
+    ctx.strokeStyle = "rgba(167,243,208,.55)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(pr.x+10, pr.y+6, pr.w-20, pr.h-12, 14);
+    ctx.stroke();
+  }
+
+  function drawDumpling(d){
+    ctx.fillStyle = "rgba(253,230,138,.95)";
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.r*1.35, d.r*0.95, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,.25)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(d.x, d.y, d.r*1.35, d.r*0.95, 0, 0, Math.PI*2);
+    ctx.stroke();
+
+    ctx.fillStyle = "rgba(255,255,255,.35)";
+    ctx.beginPath();
+    ctx.ellipse(d.x - 14, d.y - 10, d.r*0.6, d.r*0.38, 0, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = "#052e2a";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = "900 34px system-ui, -apple-system, Segoe UI, Roboto";
+    ctx.fillText(d.item.hanzi, d.x, d.y+2);
+  }
+
+  function drawFloaters(dt){
+    for(const f of floaters){
+      f.y += f.vy * dt;
+      f.ttl -= dt;
+      ctx.globalAlpha = Math.max(0, f.ttl);
+      ctx.fillStyle = f.color;
+      ctx.font = `900 ${f.size||28}px system-ui, -apple-system, Segoe UI, Roboto`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(f.text, f.x, f.y);
+      ctx.globalAlpha = 1;
+    }
+    floaters = floaters.filter(f => f.ttl > 0);
+  }
+
+  function drawTargetBanner(){
+    if(!target) return;
+    const text = `Target: ${target.hanzi}  (${target.pinyin})`;
+    ctx.font = "800 16px system-ui, -apple-system, Segoe UI, Roboto";
+    const padX = 14;
+    const w = ctx.measureText(text).width + padX*2;
+    const h = 42;
+    const x = 14, y = H - h - 14;
+
+    ctx.fillStyle = "rgba(2,6,23,.62)";
+    ctx.strokeStyle = "rgba(52,211,153,.70)";
+    ctx.lineWidth = 2;
+    roundRect(x, y, w, h, 14, true, true);
+
+    ctx.fillStyle = "#f8fafc";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, x+padX, y+h/2+1);
+  }
+
+  let last = 0;
+  function loop(ts){
+    if(!running){ drawSplash(); requestAnimationFrame(loop); return; }
+    if(paused){ drawPaused(); requestAnimationFrame(loop); return; }
+
+    const t = ts/1000;
+    const dt = Math.min(0.033, t - last);
+    last = t;
+
+    update(dt);
+    render(dt);
+    requestAnimationFrame(loop);
+  }
+
+  function update(dt){
+    const left = keys.has("ArrowLeft") || keys.has("a") || keys.has("A");
+    const right = keys.has("ArrowRight") || keys.has("d") || keys.has("D");
+    if(left) player.x -= player.speed * dt;
+    if(right) player.x += player.speed * dt;
+    player.x = Math.max(90, Math.min(W-90, player.x));
+
+    spawnTimer += dt;
+    if(spawnTimer >= spawnEvery){
+      spawnTimer = 0;
+      spawnDumpling();
+      if(Math.random() < 0.20) spawnDumpling();
+    }
+
+    for(const d of dumplings){
+      d.y += d.vy * dt;
+      if(d.y > H + 120) d.alive = false;
+    }
+
+    const pr = plateRect();
+    for(const d of dumplings){
+      if(!d.alive) continue;
+      if(rectsOverlap(pr, dumplingRect(d))){
+        onCatch(d);
+      }
+    }
+
+    dumplings = dumplings.filter(d => d.alive);
+  }
+
+  function render(dt){
+    drawBackground();
+    for(const d of dumplings) drawDumpling(d);
+    drawPlayer();
+    drawFloaters(dt);
+    drawTargetBanner();
+  }
+
+  function drawSplash(){
+    drawBackground();
+    drawPlayer();
+
+    ctx.fillStyle="rgba(2,6,23,.72)";
+    ctx.strokeStyle="rgba(52,211,153,.70)";
+    ctx.lineWidth=2;
+    roundRect(W/2-280, H/2-110, 560, 220, 18, true, true);
+
+    ctx.fillStyle="#f8fafc";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font="900 34px system-ui";
+    ctx.fillText("🥟 天上掉饺子 (WL2)", W/2, H/2-35);
+
+    ctx.font="800 16px system-ui";
+    ctx.fillStyle="#cbd5e1";
+    ctx.fillText("Press Start • ←/→ or A/D to move • Space to pause", W/2, H/2+18);
+    ctx.fillText("Catch the dumpling that matches the prompt.", W/2, H/2+46);
+  }
+
+  function drawPaused(){
+    render(0);
+    ctx.fillStyle="rgba(0,0,0,.45)";
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.textBaseline="middle";
+    ctx.font="900 44px system-ui";
+    ctx.fillText("Paused", W/2, H/2);
+    ctx.font="800 16px system-ui";
+    ctx.fillText("Press Space to resume", W/2, H/2+42);
+  }
+
+  function start(){
+    score = 0; round = 1; streak = 0;
+    dumplings = []; floaters = [];
+    scoreEl.textContent = "$0";
+    roundEl.textContent = "1";
+    streakEl.textContent = "0";
+
+    running = true; paused = false;
+    last = performance.now()/1000;
+    spawnTimer = 0;
+
+    startBtn.disabled = true;
+    pauseBtn.disabled = false;
+    repeatBtn.disabled = false;
+    pauseBtn.textContent = "Pause";
+
+    pickTarget();
+  }
+
+  function togglePause(){
+    if(!running) return;
+    paused = !paused;
+    pauseBtn.textContent = paused ? "Resume" : "Pause";
+  }
+
+  startBtn.addEventListener("click", start);
+  pauseBtn.addEventListener("click", togglePause);
+  repeatBtn.addEventListener("click", () => {
+    if(target) speakChinese(target.speak || target.hanzi);
+  });
+
+  pinyinOnly.addEventListener("change", () => { if(pinyinOnly.checked) englishOnly.checked=false; if(target) pickTarget(); });
+  englishOnly.addEventListener("change", () => { if(englishOnly.checked) pinyinOnly.checked=false; if(target) pickTarget(); });
+
+  if("speechSynthesis" in window){
+    window.speechSynthesis.onvoiceschanged = () => {};
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
